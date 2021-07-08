@@ -38,18 +38,18 @@
 
 typedef char *sds;
 
-struct sdshdr {
-    unsigned int len;
-    unsigned int free;
-    char buf[];
+struct sdshdr { // redis自建的string
+    unsigned int len;  // 已用的字节数量
+    unsigned int free; // 未使用的字节数量
+    char buf[];        // 字节数组，用于保存字符串
 };
 
-static inline size_t sdslen(const sds s) {
+static inline size_t sdslen(const sds s) { // 已用长度
     struct sdshdr *sh = (void*)(s-(sizeof(struct sdshdr)));
     return sh->len;
 }
 
-static inline size_t sdsavail(const sds s) {
+static inline size_t sdsavail(const sds s) { // 未用长度
     struct sdshdr *sh = (void*)(s-(sizeof(struct sdshdr)));
     return sh->free;
 }

@@ -176,25 +176,25 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_CMD_ASKING 4096               /* "k" flag */
 #define REDIS_CMD_FAST 8192                 /* "F" flag */
 
-/* Object types */
-#define REDIS_STRING 0
-#define REDIS_LIST 1
-#define REDIS_SET 2
-#define REDIS_ZSET 3
-#define REDIS_HASH 4
+/* 数据类型 */
+#define REDIS_STRING 0  // 字符串对象    
+#define REDIS_LIST 1    // 列表对象
+#define REDIS_SET 2     // 集合对象
+#define REDIS_ZSET 3    // 有序集合对象
+#define REDIS_HASH 4    // 哈希对象
 
-/* Objects encoding. Some kind of objects like Strings and Hashes can be
- * internally represented in multiple ways. The 'encoding' field of the object
- * is set to one of this fields for this object. */
-#define REDIS_ENCODING_RAW 0     /* Raw representation */
-#define REDIS_ENCODING_INT 1     /* Encoded as integer */
-#define REDIS_ENCODING_HT 2      /* Encoded as hash table */
-#define REDIS_ENCODING_ZIPMAP 3  /* Encoded as zipmap */
-#define REDIS_ENCODING_LINKEDLIST 4 /* Encoded as regular linked list */
-#define REDIS_ENCODING_ZIPLIST 5 /* Encoded as ziplist */
-#define REDIS_ENCODING_INTSET 6  /* Encoded as intset */
-#define REDIS_ENCODING_SKIPLIST 7  /* Encoded as skiplist */
-#define REDIS_ENCODING_EMBSTR 8  /* Embedded sds string encoding */
+/* 
+ * 编码方式
+ */
+#define REDIS_ENCODING_RAW 0        // 简单动态字符串
+#define REDIS_ENCODING_INT 1        // 整数
+#define REDIS_ENCODING_HT 2         // 字典
+#define REDIS_ENCODING_ZIPMAP 3     // 压缩map
+#define REDIS_ENCODING_LINKEDLIST 4 // 双端链表
+#define REDIS_ENCODING_ZIPLIST 5    // 压缩列表
+#define REDIS_ENCODING_INTSET 6     // 整数集合
+#define REDIS_ENCODING_SKIPLIST 7   // 跳表
+#define REDIS_ENCODING_EMBSTR 8     // bemstr编码的简单动态字符串
 
 /* Defines related to the dump file format. To store 32 bits lengths for short
  * keys requires a lot of space, so we check the most significant 2 bits of
@@ -323,7 +323,7 @@ typedef long long mstime_t; /* millisecond time type. */
 /* Anti-warning macro... */
 #define REDIS_NOTUSED(V) ((void) V)
 
-#define ZSKIPLIST_MAXLEVEL 32 /* Should be enough for 2^32 elements */
+#define ZSKIPLIST_MAXLEVEL 32 /* 跳表的最大层数 */
 #define ZSKIPLIST_P 0.25      /* Skiplist P = 1/4 */
 
 /* Append only defines */
@@ -335,11 +335,11 @@ typedef long long mstime_t; /* millisecond time type. */
 /* Zip structure related defaults */
 #define REDIS_HASH_MAX_ZIPLIST_ENTRIES 512
 #define REDIS_HASH_MAX_ZIPLIST_VALUE 64
-#define REDIS_LIST_MAX_ZIPLIST_ENTRIES 512
-#define REDIS_LIST_MAX_ZIPLIST_VALUE 64
-#define REDIS_SET_MAX_INTSET_ENTRIES 512
-#define REDIS_ZSET_MAX_ZIPLIST_ENTRIES 128
-#define REDIS_ZSET_MAX_ZIPLIST_VALUE 64
+#define REDIS_LIST_MAX_ZIPLIST_ENTRIES 512  // list保存的元素临界值，不超过就不用ziplist
+#define REDIS_LIST_MAX_ZIPLIST_VALUE 64     // 元素长度临界值，不超过就不用ziplist
+#define REDIS_SET_MAX_INTSET_ENTRIES 512    // 集合对象所有元素数量临界值，超过就不考虑intset 
+#define REDIS_ZSET_MAX_ZIPLIST_ENTRIES 128  // zset保存的元素数量临界值，超过就不考虑ziplist
+#define REDIS_ZSET_MAX_ZIPLIST_VALUE 64     // zset的元素长度临界值，超过就不考虑ziplist
 
 /* HyperLogLog defines */
 #define REDIS_DEFAULT_HLL_SPARSE_MAX_BYTES 3000
@@ -424,12 +424,12 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_LRU_BITS 24
 #define REDIS_LRU_CLOCK_MAX ((1<<REDIS_LRU_BITS)-1) /* Max value of obj->lru */
 #define REDIS_LRU_CLOCK_RESOLUTION 1000 /* LRU clock resolution in ms */
-typedef struct redisObject {
-    unsigned type:4;
-    unsigned encoding:4;
-    unsigned lru:REDIS_LRU_BITS; /* lru time (relative to server.lruclock) */
-    int refcount;
-    void *ptr;
+typedef struct redisObject { // redis基本数据对象
+    unsigned type:4;             // 数据类型;
+    unsigned encoding:4;         // 编码方式;
+    unsigned lru:REDIS_LRU_BITS; // 最后一次被程序访问的时间
+    int refcount;                // 引用计数
+    void *ptr;                   // 指向底层数据结构的指针
 } robj;
 
 /* Macro used to obtain the current LRU clock.
@@ -578,9 +578,9 @@ typedef struct redisClient {
     char buf[REDIS_REPLY_CHUNK_BYTES];
 } redisClient;
 
-struct saveparam {
-    time_t seconds;
-    int changes;
+struct saveparam { // 配置save的参数
+    time_t seconds; // 秒数
+    int changes;    // 修改数
 };
 
 struct sharedObjectsStruct {
@@ -598,26 +598,26 @@ struct sharedObjectsStruct {
     *bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
 };
 
-/* ZSETs use a specialized version of Skiplists */
+/* 跳表节点 */
 typedef struct zskiplistNode {
-    robj *obj;
-    double score;
-    struct zskiplistNode *backward;
+    robj *obj;                          // 成员对象
+    double score;                       // 分值
+    struct zskiplistNode *backward;     // 后退指针（方向表头，指向上一个节点）
     struct zskiplistLevel {
-        struct zskiplistNode *forward;
-        unsigned int span;
-    } level[];
+        struct zskiplistNode *forward;  // 前进指针（方向表尾）
+        unsigned int span;              // 前进指针和当前节点的距离
+    } level[];                          // 层高，随机[1,32]
 } zskiplistNode;
 
-typedef struct zskiplist {
-    struct zskiplistNode *header, *tail;
-    unsigned long length;
-    int level;
+typedef struct zskiplist { // 跳表
+    struct zskiplistNode *header, *tail; // 表头，表尾
+    unsigned long length;                // 节点数量（不算表头）
+    int level;                           // 最大层级
 } zskiplist;
 
 typedef struct zset {
-    dict *dict;
-    zskiplist *zsl;
+    dict *dict;     // 字典
+    zskiplist *zsl; // 跳表
 } zset;
 
 typedef struct clientBufferLimitsConfig {
@@ -787,15 +787,15 @@ struct redisServer {
                                       to child process. */
     sds aof_child_diff;             /* AOF diff accumulator child side. */
     /* RDB persistence */
-    long long dirty;                /* Changes to DB from the last save */
+    long long dirty;                /* 最后一次成功持久化后新增的修改数 */
     long long dirty_before_bgsave;  /* Used to restore dirty on failed BGSAVE */
     pid_t rdb_child_pid;            /* PID of RDB saving child */
-    struct saveparam *saveparams;   /* Save points array for RDB */
+    struct saveparam *saveparams;   /* 配置“save”的参数 <秒数> <修改数> */
     int saveparamslen;              /* Number of saving points */
     char *rdb_filename;             /* Name of RDB file */
     int rdb_compression;            /* Use compression in RDB? */
     int rdb_checksum;               /* Use RDB checksum? */
-    time_t lastsave;                /* Unix time of last successful save */
+    time_t lastsave;                /* 最后一次成功持久化的时间 */
     time_t lastbgsave_try;          /* Unix time of last attempted bgsave */
     time_t rdb_save_time_last;      /* Time used by last RDB save run. */
     time_t rdb_save_time_start;     /* Current RDB save start time. */
@@ -887,8 +887,8 @@ struct redisServer {
     time_t unixtime;        /* Unix time sampled every cron cycle. */
     long long mstime;       /* Like 'unixtime' but with milliseconds resolution. */
     /* Pubsub */
-    dict *pubsub_channels;  /* Map channels to list of subscribed clients */
-    list *pubsub_patterns;  /* A list of pubsub_patterns */
+    dict *pubsub_channels;  /* 订阅的客户端字典：key:频道，value:客户端列表 */
+    list *pubsub_patterns;  /* 正则匹配订阅的客户端 */
     int notify_keyspace_events; /* Events to propagate via Pub/Sub. This is an
                                    xor of REDIS_NOTIFY... flags. */
     /* Cluster */

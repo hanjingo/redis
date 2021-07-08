@@ -48,15 +48,15 @@ robj *createObject(int type, void *ptr) {
     return o;
 }
 
-/* Create a string object with encoding REDIS_ENCODING_RAW, that is a plain
- * string object where o->ptr points to a proper sds string. */
+/* 创建raw类型的string，需要长度大于39
+ */
 robj *createRawStringObject(char *ptr, size_t len) {
     return createObject(REDIS_STRING,sdsnewlen(ptr,len));
 }
 
-/* Create a string object with encoding REDIS_ENCODING_EMBSTR, that is
- * an object where the sds string is actually an unmodifiable string
- * allocated in the same chunk as the object itself. */
+/* 
+ * 创建embstr类型的string，需要长度小于39
+ */
 robj *createEmbeddedStringObject(char *ptr, size_t len) {
     robj *o = zmalloc(sizeof(robj)+sizeof(struct sdshdr)+len+1);
     struct sdshdr *sh = (void*)(o+1);
@@ -78,32 +78,32 @@ robj *createEmbeddedStringObject(char *ptr, size_t len) {
     return o;
 }
 
-/* Create a string object with EMBSTR encoding if it is smaller than
- * REIDS_ENCODING_EMBSTR_SIZE_LIMIT, otherwise the RAW encoding is
- * used.
- *
- * The current limit of 39 is chosen so that the biggest string object
- * we allocate as EMBSTR will still fit into the 64 byte arena of jemalloc. */
-#define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
-robj *createStringObject(char *ptr, size_t len) {
+/* 
+ * 
+ * 
+ * 创建一个embstr编码的字符串，如果小于39，用embstr方式，否则用raw
+ * 
+ */
+#define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39 // 字符串长度分界线
+robj *createStringObject(char *ptr, size_t len) {       // 创建普通string
     if (len <= REDIS_ENCODING_EMBSTR_SIZE_LIMIT)
-        return createEmbeddedStringObject(ptr,len);
+        return createEmbeddedStringObject(ptr,len);     // embstr方式
     else
-        return createRawStringObject(ptr,len);
+        return createRawStringObject(ptr,len);          // raw方式
 }
 
-robj *createStringObjectFromLongLong(long long value) {
+robj *createStringObjectFromLongLong(long long value) { // 创建整数型string
     robj *o;
     if (value >= 0 && value < REDIS_SHARED_INTEGERS) {
         incrRefCount(shared.integers[value]);
         o = shared.integers[value];
     } else {
-        if (value >= LONG_MIN && value <= LONG_MAX) {
+        if (value >= LONG_MIN && value <= LONG_MAX) {   // 有效的长整型
             o = createObject(REDIS_STRING, NULL);
             o->encoding = REDIS_ENCODING_INT;
             o->ptr = (void*)((long)value);
         } else {
-            o = createObject(REDIS_STRING,sdsfromlonglong(value));
+            o = createObject(REDIS_STRING,sdsfromlonglong(value)); // longlong类型转string
         }
     }
     return o;
@@ -180,7 +180,7 @@ robj *dupStringObject(robj *o) {
     }
 }
 
-robj *createListObject(void) {
+robj *createListObject(void) { // 创建list
     list *l = listCreate();
     robj *o = createObject(REDIS_LIST,l);
     listSetFreeMethod(l,decrRefCountVoid);
@@ -188,28 +188,28 @@ robj *createListObject(void) {
     return o;
 }
 
-robj *createZiplistObject(void) {
+robj *createZiplistObject(void) { // 创建ziplist编码的对象
     unsigned char *zl = ziplistNew();
     robj *o = createObject(REDIS_LIST,zl);
     o->encoding = REDIS_ENCODING_ZIPLIST;
     return o;
 }
 
-robj *createSetObject(void) {
+robj *createSetObject(void) { // 创建set
     dict *d = dictCreate(&setDictType,NULL);
     robj *o = createObject(REDIS_SET,d);
     o->encoding = REDIS_ENCODING_HT;
     return o;
 }
 
-robj *createIntsetObject(void) {
+robj *createIntsetObject(void) { // 创建intset编码的对象
     intset *is = intsetNew();
     robj *o = createObject(REDIS_SET,is);
     o->encoding = REDIS_ENCODING_INTSET;
     return o;
 }
 
-robj *createHashObject(void) {
+robj *createHashObject(void) { // 创建hash
     unsigned char *zl = ziplistNew();
     robj *o = createObject(REDIS_HASH, zl);
     o->encoding = REDIS_ENCODING_ZIPLIST;

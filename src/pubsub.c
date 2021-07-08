@@ -53,18 +53,18 @@ int clientSubscriptionsCount(redisClient *c) {
            listLength(c->pubsub_patterns);
 }
 
-/* Subscribe a client to a channel. Returns 1 if the operation succeeded, or
- * 0 if the client was already subscribed to that channel. */
+/* 订阅频道，返回1表示成功，0表示已经订阅过了
+ */
 int pubsubSubscribeChannel(redisClient *c, robj *channel) {
     dictEntry *de;
     list *clients = NULL;
     int retval = 0;
 
-    /* Add the channel to the client -> channels hash table */
+    /* 添加一个频道作为key */
     if (dictAdd(c->pubsub_channels,channel,NULL) == DICT_OK) {
         retval = 1;
         incrRefCount(channel);
-        /* Add the client to the channel -> list of clients hash table */
+        /* 根据key找客户端list */
         de = dictFind(server.pubsub_channels,channel);
         if (de == NULL) {
             clients = listCreate();
@@ -73,9 +73,9 @@ int pubsubSubscribeChannel(redisClient *c, robj *channel) {
         } else {
             clients = dictGetVal(de);
         }
-        listAddNodeTail(clients,c);
+        listAddNodeTail(clients,c); // 加到客户端list
     }
-    /* Notify the client */
+    /* 通知客户端 */
     addReply(c,shared.mbulkhdr[3]);
     addReply(c,shared.subscribebulk);
     addReplyBulk(c,channel);
@@ -221,14 +221,14 @@ int pubsubUnsubscribeAllPatterns(redisClient *c, int notify) {
     return count;
 }
 
-/* Publish a message */
+/* 发布消息 */
 int pubsubPublishMessage(robj *channel, robj *message) {
     int receivers = 0;
     dictEntry *de;
     listNode *ln;
     listIter li;
 
-    /* Send to clients listening for that channel */
+    /* 根据频道找到客户端list */
     de = dictFind(server.pubsub_channels,channel);
     if (de) {
         list *list = dictGetVal(de);
@@ -236,7 +236,7 @@ int pubsubPublishMessage(robj *channel, robj *message) {
         listIter li;
 
         listRewind(list,&li);
-        while ((ln = listNext(&li)) != NULL) {
+        while ((ln = listNext(&li)) != NULL) { // 遍历链表，发送消息
             redisClient *c = ln->value;
 
             addReply(c,shared.mbulkhdr[3]);
