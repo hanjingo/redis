@@ -33,11 +33,11 @@
 #include "adlist.h"
 #include "zmalloc.h"
 
-/* Create a new list. The created list can be freed with
- * AlFreeList(), but private value of every node need to be freed
- * by the user before to call AlFreeList().
+/** 
+ * @brief 创建一个不包含任何节点的新链表
+ * 
  *
- * On error, NULL is returned. Otherwise the pointer to the new list. */
+ **/
 list *listCreate(void)
 {
     struct list *list;
@@ -52,9 +52,9 @@ list *listCreate(void)
     return list;
 }
 
-/* Free the whole list.
- *
- * This function can't fail. */
+/**
+ * @brief 释放给定链表，以及链表中的所有节点
+ **/
 void listRelease(list *list)
 {
     unsigned long len;
@@ -71,12 +71,12 @@ void listRelease(list *list)
     zfree(list);
 }
 
-/* Add a new node to the list, to head, containing the specified 'value'
- * pointer as value.
+/**
+ * @brief 将一个包含给定值的新节点添加到给定链表的表头
  *
- * On error, NULL is returned and no operation is performed (i.e. the
- * list remains unaltered).
- * On success the 'list' pointer you pass to the function is returned. */
+ * @param list 待添加的链表
+ * @param value 给定的值
+ **/
 list *listAddNodeHead(list *list, void *value)
 {
     listNode *node;
@@ -97,12 +97,12 @@ list *listAddNodeHead(list *list, void *value)
     return list;
 }
 
-/* Add a new node to the list, to tail, containing the specified 'value'
- * pointer as value.
+/**
+ * @brief 将一个包含给定值的新节点添加到链表的表尾
  *
- * On error, NULL is returned and no operation is performed (i.e. the
- * list remains unaltered).
- * On success the 'list' pointer you pass to the function is returned. */
+ * @param list 链表
+ * @param value 给定值
+ **/
 list *listAddNodeTail(list *list, void *value)
 {
     listNode *node;
@@ -123,7 +123,7 @@ list *listAddNodeTail(list *list, void *value)
     return list;
 }
 
-list *listInsertNode(list *list, listNode *old_node, void *value, int after) {
+list *listInsertNode(list *list, listNode *old_node, void *value, int after) { // 讲一个包含给定值的新节点添加到给定节点之前/后（取决于after）
     listNode *node;
 
     if ((node = zmalloc(sizeof(*node))) == NULL)
@@ -152,10 +152,10 @@ list *listInsertNode(list *list, listNode *old_node, void *value, int after) {
     return list;
 }
 
-/* Remove the specified node from the specified list.
- * It's up to the caller to free the private value of the node.
- *
- * This function can't fail. */
+/* @brief 删除节点
+ * @param list 待删除的链表
+ * @param node 待删除的节点
+ **/
 void listDelNode(list *list, listNode *node)
 {
     if (node->prev)
@@ -204,13 +204,13 @@ void listRewindTail(list *list, listIter *li) {
     li->direction = AL_START_TAIL;
 }
 
-/* Return the next element of an iterator.
- * It's valid to remove the currently returned element using
- * listDelNode(), but not to remove other elements.
- *
- * The function returns a pointer to the next element of the list,
- * or NULL if there are no more elements, so the classical usage patter
- * is:
+/**
+ * @brief 返回下一个节点
+ * 
+ * @param iter 迭代器
+ * 
+ * 
+ * 
  *
  * iter = listGetIterator(list,<direction>);
  * while ((node = listNext(iter)) != NULL) {
@@ -231,14 +231,14 @@ listNode *listNext(listIter *iter)
     return current;
 }
 
-/* Duplicate the whole list. On out of memory NULL is returned.
- * On success a copy of the original list is returned.
+/**
+ * @brief 复制一个给定链表的副本
  *
- * The 'Dup' method set with listSetDupMethod() function is used
- * to copy the node value. Otherwise the same pointer value of
- * the original node is used as value of the copied node.
+ * @param orig 待复制的链表
+ * 
+ * 
  *
- * The original list both on success or error is never modified. */
+ **/
 list *listDup(list *orig)
 {
     list *copy;
@@ -273,15 +273,15 @@ list *listDup(list *orig)
     return copy;
 }
 
-/* Search the list for a node matching a given key.
- * The match is performed using the 'match' method
- * set with listSetMatchMethod(). If no 'match' method
- * is set, the 'value' pointer of every node is directly
- * compared with the 'key' pointer.
- *
- * On success the first matching node pointer is returned
- * (search starts from head). If no matching node exists
- * NULL is returned. */
+/**
+ * @brief 查找并返回链表中包含给定值的节点
+ * 
+ * @param list 待查找的链表
+ * 
+ * @param key 节点
+ * 
+ * 
+ **/
 listNode *listSearchKey(list *list, void *key)
 {
     listIter *iter;
@@ -305,11 +305,11 @@ listNode *listSearchKey(list *list, void *key)
     return NULL;
 }
 
-/* Return the element at the specified zero-based index
- * where 0 is the head, 1 is the element next to head
- * and so on. Negative integers are used in order to count
- * from the tail, -1 is the last element, -2 the penultimate
- * and so on. If the index is out of range NULL is returned. */
+/**
+ * @brief 返回链表在给定索引上的节点
+ * @param list 链表
+ * @param index 索引
+ **/
 listNode *listIndex(list *list, long index) {
     listNode *n;
 
@@ -324,7 +324,7 @@ listNode *listIndex(list *list, long index) {
     return n;
 }
 
-/* Rotate the list removing the tail node and inserting it to the head. */
+/* 翻转链表 */
 void listRotate(list *list) {
     listNode *tail = list->tail;
 

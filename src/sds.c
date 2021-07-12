@@ -65,24 +65,24 @@ sds sdsnewlen(const void *init, size_t initlen) {
     return (char*)sh->buf;
 }
 
-/* Create an empty (zero length) sds string. Even in this case the string
- * always has an implicit null term. */
+
+/* 创建一个不包含任何内容的空SDS */
 sds sdsempty(void) {
     return sdsnewlen("",0);
 }
 
-/* Create a new sds string starting from a null terminated C string. */
+/* 创建一个包含给定C字符串的SDS */
 sds sdsnew(const char *init) {
     size_t initlen = (init == NULL) ? 0 : strlen(init);
     return sdsnewlen(init, initlen);
 }
 
-/* Duplicate an sds string. */
+/* 创建一个sds的副本 */
 sds sdsdup(const sds s) {
     return sdsnewlen(s, sdslen(s));
 }
 
-/* Free an sds string. No operation is performed if 's' is NULL. */
+/* 释放sds */
 void sdsfree(sds s) {
     if (s == NULL) return;
     zfree(s-sizeof(struct sdshdr));
@@ -109,10 +109,10 @@ void sdsupdatelen(sds s) {
     sh->len = reallen;
 }
 
-/* Modify an sds string in-place to make it empty (zero length).
- * However all the existing buffer is not discarded but set as free space
- * so that next append operations will not require allocations up to the
- * number of bytes previously available. */
+/**
+ * @brief 情况SDS字符串内容
+ *
+ */
 void sdsclear(sds s) {
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
     sh->free += sh->len;
@@ -209,11 +209,11 @@ void sdsIncrLen(sds s, int incr) {
     s[sh->len] = '\0';
 }
 
-/* Grow the sds to have the specified length. Bytes that were not part of
- * the original length of the sds will be set to zero.
- *
- * if the specified length is smaller than the current length, no operation
- * is performed. */
+/** 
+ * @brief 用空字符将SDS扩展至给定长度 
+ * @param s SDS
+ * @param len 要扩展到的长度
+ * */
 sds sdsgrowzero(sds s, size_t len) {
     struct sdshdr *sh = (void*)(s-(sizeof(struct sdshdr)));
     size_t totlen, curlen = sh->len;
@@ -250,18 +250,18 @@ sds sdscatlen(sds s, const void *t, size_t len) {
     return s;
 }
 
-/* Append the specified null termianted C string to the sds string 's'.
- *
- * After the call, the passed sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
+/* 
+ * 将字符串拼接到SDS的尾部
+ * 
+ */
 sds sdscat(sds s, const char *t) {
     return sdscatlen(s, t, strlen(t));
 }
 
-/* Append the specified sds 't' to the existing sds 's'.
- *
- * After the call, the modified sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
+/* 
+ * 将sds拼接到另一个sds
+ * 
+ */
 sds sdscatsds(sds s, const sds t) {
     return sdscatlen(s, t, sdslen(t));
 }
@@ -285,8 +285,8 @@ sds sdscpylen(sds s, const char *t, size_t len) {
     return s;
 }
 
-/* Like sdscpylen() but 't' must be a null-termined string so that the length
- * of the string is obtained with strlen(). */
+/* 
+ * 将c字符串复制到SDS，覆盖SDS里面原有的字符串 */
 sds sdscpy(sds s, const char *t) {
     return sdscpylen(s, t, strlen(t));
 }
@@ -548,12 +548,9 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
     return s;
 }
 
-/* Remove the part of the string from left and from right composed just of
- * contiguous characters found in 'cset', that is a null terminted C string.
- *
- * After the call, the modified sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call.
- *
+/**
+ * @brief 接受一个SDS和一个C字符串作为参数，从SDS中移除所有在C字符串中出现过的字符
+ * 
  * Example:
  *
  * s = sdsnew("AA...AA.a.aa.aHelloWorld     :::");
@@ -561,6 +558,9 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
  * printf("%s\n", s);
  *
  * Output will be just "Hello World".
+ * @param s SDS
+ * @param cset 指定的c字符串
+ * 
  */
 sds sdstrim(sds s, const char *cset) {
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
@@ -579,21 +579,21 @@ sds sdstrim(sds s, const char *cset) {
     return s;
 }
 
-/* Turn the string into a smaller (or equal) string containing only the
- * substring specified by the 'start' and 'end' indexes.
+/**
+ * @brief 保留SDS给定区间内的数据，不再区间内的数据会被覆盖或清除 
  *
- * start and end can be negative, where -1 means the last character of the
- * string, -2 the penultimate character, and so forth.
+ *  
+ * 
  *
- * The interval is inclusive, so the start and end characters will be part
- * of the resulting string.
+ * 
  *
- * The string is modified in-place.
+ * 
  *
- * Example:
- *
- * s = sdsnew("Hello World");
- * sdsrange(s,1,-1); => "ello World"
+ * 
+ * @param s SDS
+ * @param start 开始位置
+ * @param end 结束位置
+ * 
  */
 void sdsrange(sds s, int start, int end) {
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
@@ -639,8 +639,8 @@ void sdstoupper(sds s) {
     for (j = 0; j < len; j++) s[j] = toupper(s[j]);
 }
 
-/* Compare two sds strings s1 and s2 with memcmp().
- *
+/** 
+ * @brief 对比两个SDS
  * Return value:
  *
  *     positive if s1 > s2.
