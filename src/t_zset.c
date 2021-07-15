@@ -62,7 +62,7 @@ zskiplistNode *zslCreateNode(int level, double score, robj *obj) {
     return zn;
 }
 
-zskiplist *zslCreate(void) {
+zskiplist *zslCreate(void) { // 创建一个新的跳表
     int j;
     zskiplist *zsl;
 
@@ -84,7 +84,7 @@ void zslFreeNode(zskiplistNode *node) {
     zfree(node);
 }
 
-void zslFree(zskiplist *zsl) {
+void zslFree(zskiplist *zsl) { // 释放给定跳表，以及表中包含的所有节点
     zskiplistNode *node = zsl->header->level[0].forward, *next;
 
     zfree(zsl->header);
@@ -106,7 +106,7 @@ int zslRandomLevel(void) {
         level += 1;
     return (level<ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;
 }
-
+/** @brief 插入节点 @param zsl 跳表 @param score 分值 @param obj 值 */
 zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj) { // 插入节点
     zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;
     unsigned int rank[ZSKIPLIST_MAXLEVEL];
@@ -127,8 +127,8 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj) { // 插入节
         update[i] = x;
     }
     /* 
-     * 随机一个层级level，在[1,level]的每一层插入元素，
-     * 
+     * 随机一个层级level，
+     * 在[1,level]的每一层插入元素
      */
     level = zslRandomLevel(); // 真随机一个要占据的层数
     if (level > zsl->level) { // 层级不够，扩充层级
@@ -184,7 +184,7 @@ void zslDeleteNode(zskiplist *zsl, zskiplistNode *x, zskiplistNode **update) {
     zsl->length--;
 }
 
-/* Delete an element with matching score/object from the skiplist. */
+/** @brief 删除跳表中指定分值的对象obj @param zsl 跳表 @param score 分值 @param obj 对象 */
 int zslDelete(zskiplist *zsl, double score, robj *obj) {
     zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;
     int i;
@@ -234,8 +234,8 @@ int zslIsInRange(zskiplist *zsl, zrangespec *range) {
     return 1;
 }
 
-/* Find the first node that is contained in the specified range.
- * Returns NULL when no element is contained in the range. */
+/* 查找范围内的第一个节点
+ */
 zskiplistNode *zslFirstInRange(zskiplist *zsl, zrangespec *range) {
     zskiplistNode *x;
     int i;
@@ -260,8 +260,8 @@ zskiplistNode *zslFirstInRange(zskiplist *zsl, zrangespec *range) {
     return x;
 }
 
-/* Find the last node that is contained in the specified range.
- * Returns NULL when no element is contained in the range. */
+/* 查找范围内的最后一个节点
+ */
 zskiplistNode *zslLastInRange(zskiplist *zsl, zrangespec *range) {
     zskiplistNode *x;
     int i;
@@ -379,10 +379,10 @@ unsigned long zslDeleteRangeByRank(zskiplist *zsl, unsigned int start, unsigned 
     return removed;
 }
 
-/* Find the rank for an element by both score and key.
- * Returns 0 when the element cannot be found, rank otherwise.
- * Note that the rank is 1-based due to the span of zsl->header to the
- * first element. */
+/**
+ * @brief 返回包含给定成员和分值的节点在跳表中的排位；返回0表示未找到
+ * @param score 分值 @param o 成员
+ */
 unsigned long zslGetRank(zskiplist *zsl, double score, robj *o) {
     zskiplistNode *x;
     unsigned long rank = 0;

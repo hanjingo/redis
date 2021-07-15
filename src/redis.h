@@ -602,10 +602,10 @@ struct sharedObjectsStruct {
 typedef struct zskiplistNode {
     robj *obj;                          // 成员对象
     double score;                       // 分值
-    struct zskiplistNode *backward;     // 后退指针（方向表头，指向上一个节点）
+    struct zskiplistNode *backward;     // 后退指针（方向表头，指向上一个节点）,步进单位1步
     struct zskiplistLevel {
-        struct zskiplistNode *forward;  // 前进指针（方向表尾）
-        unsigned int span;              // 前进指针和当前节点的距离
+        struct zskiplistNode *forward;  // 前进指针（方向表尾），步进单位>=1步
+        unsigned int span;              // 前进指针和当前节点的距离，用来排位
     } level[];                          // 层高，随机[1,32]
 } zskiplistNode;
 
