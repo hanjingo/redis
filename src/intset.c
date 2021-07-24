@@ -37,9 +37,9 @@
 
 /* Note that these encodings are ordered, so:
  * INTSET_ENC_INT16 < INTSET_ENC_INT32 < INTSET_ENC_INT64. */
-#define INTSET_ENC_INT16 (sizeof(int16_t))
-#define INTSET_ENC_INT32 (sizeof(int32_t))
-#define INTSET_ENC_INT64 (sizeof(int64_t))
+#define INTSET_ENC_INT16 (sizeof(int16_t)) // 编码方式int16_t，[-32768, 32767]
+#define INTSET_ENC_INT32 (sizeof(int32_t)) // 编码方式int32_t，[-2147483648, 2147483647]
+#define INTSET_ENC_INT64 (sizeof(int64_t)) // 编码方式int64_t，[-9223372036854775808，9223372036854775807]
 
 /* Return the required encoding for the provided value. */
 static uint8_t _intsetValueEncoding(int64_t v) {
@@ -153,7 +153,7 @@ static uint8_t intsetSearch(intset *is, int64_t value, uint32_t *pos) {
     }
 }
 
-/* Upgrades the intset to a larger encoding and inserts the given integer. */
+/** @brief 添加一个长数字时，升级底层元素 */
 static intset *intsetUpgradeAndAdd(intset *is, int64_t value) {
     uint8_t curenc = intrev32ifbe(is->encoding);
     uint8_t newenc = _intsetValueEncoding(value);

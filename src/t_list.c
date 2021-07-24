@@ -66,7 +66,7 @@ void listTypePush(robj *subject, robj *value, int where) {
         } else {
             listAddNodeTail(subject->ptr,value);
         }
-        incrRefCount(value);
+        incrRefCount(value); // 引用计数+1
     } else {
         redisPanic("Unknown list encoding");
     }

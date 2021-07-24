@@ -428,7 +428,7 @@ typedef struct redisObject { // redis基本数据对象
     unsigned type:4;             // 数据类型;
     unsigned encoding:4;         // 编码方式;
     unsigned lru:REDIS_LRU_BITS; // 最后一次被程序访问的时间
-    int refcount;                // 引用计数
+    int refcount;                // 引用计数，用于内存回收
     void *ptr;                   // 指向底层数据结构的指针
 } robj;
 
@@ -438,10 +438,10 @@ typedef struct redisObject { // redis基本数据对象
  * precomputed value, otherwise we need to resort to a function call. */
 #define LRU_CLOCK() ((1000/server.hz <= REDIS_LRU_CLOCK_RESOLUTION) ? server.lruclock : getLRUClock())
 
-/* Macro used to initialize a Redis object allocated on the stack.
- * Note that this macro is taken near the structure definition to make sure
- * we'll update it when the structure is changed, to avoid bugs like
- * bug #85 introduced exactly in this way. */
+/** 
+ * @brief 初始化string对象；引用计数为1
+ * 
+ * */
 #define initStaticStringObject(_var,_ptr) do { \
     _var.refcount = 1; \
     _var.type = REDIS_STRING; \
@@ -888,7 +888,7 @@ struct redisServer {
     long long mstime;       /* Like 'unixtime' but with milliseconds resolution. */
     /* Pubsub */
     dict *pubsub_channels;  /* 订阅的客户端字典：key:频道，value:客户端列表 */
-    list *pubsub_patterns;  /* 正则匹配订阅的客户端 */
+    list *pubsub_patterns;  /* 订阅关系列表 */
     int notify_keyspace_events; /* Events to propagate via Pub/Sub. This is an
                                    xor of REDIS_NOTIFY... flags. */
     /* Cluster */
@@ -925,9 +925,9 @@ struct redisServer {
     int watchdog_period;  /* Software watchdog period in ms. 0 = off */
 };
 
-typedef struct pubsubPattern {
-    redisClient *client;
-    robj *pattern;
+typedef struct pubsubPattern { // 模式订阅列表
+    redisClient *client; // 客户端
+    robj *pattern;       // 被订阅的模式
 } pubsubPattern;
 
 typedef void redisCommandProc(redisClient *c);

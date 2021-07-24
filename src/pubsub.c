@@ -123,11 +123,11 @@ int pubsubUnsubscribeChannel(redisClient *c, robj *channel, int notify) {
     return retval;
 }
 
-/* Subscribe a client to a pattern. Returns 1 if the operation succeeded, or 0 if the client was already subscribed to that pattern. */
+/** @brief 添加模式匹配 */
 int pubsubSubscribePattern(redisClient *c, robj *pattern) {
     int retval = 0;
 
-    if (listSearchKey(c->pubsub_patterns,pattern) == NULL) {
+    if (listSearchKey(c->pubsub_patterns,pattern) == NULL) { // 不存在就新建一个模糊key
         retval = 1;
         pubsubPattern *pat;
         listAddNodeTail(c->pubsub_patterns,pattern);
@@ -135,7 +135,7 @@ int pubsubSubscribePattern(redisClient *c, robj *pattern) {
         pat = zmalloc(sizeof(*pat));
         pat->pattern = getDecodedObject(pattern);
         pat->client = c;
-        listAddNodeTail(server.pubsub_patterns,pat);
+        listAddNodeTail(server.pubsub_patterns,pat); // 添加到尾部
     }
     /* Notify the client */
     addReply(c,shared.mbulkhdr[3]);
@@ -145,8 +145,8 @@ int pubsubSubscribePattern(redisClient *c, robj *pattern) {
     return retval;
 }
 
-/* Unsubscribe a client from a channel. Returns 1 if the operation succeeded, or
- * 0 if the client was not subscribed to the specified channel. */
+/**
+ * @brief 取消模式订阅 */
 int pubsubUnsubscribePattern(redisClient *c, robj *pattern, int notify) {
     listNode *ln;
     pubsubPattern pat;

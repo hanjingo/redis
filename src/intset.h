@@ -33,9 +33,9 @@
 #include <stdint.h>
 // 整数集合
 typedef struct intset {
-    uint32_t encoding; // 编码方式
-    uint32_t length;   // 集合包含的元素数量
-    int8_t contents[]; // 保存元素的数组，从小到大排序，不包含重复项
+    uint32_t encoding; // 编码方式 INTSET_ENC_INT16,INTSET_ENC_INT32,INTSET_ENC_INT64
+    uint32_t length;   // 集合包含的元素数量，contents的长度
+    int8_t contents[]; // 保存元素的数组，从小到大排序，不包含重复项(item不一定为int8_t，取决于编码方式)
 } intset;
 
 intset *intsetNew(void);
