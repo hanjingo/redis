@@ -42,10 +42,10 @@
 /* Unused arguments generate annoying warnings... */
 #define DICT_NOTUSED(V) ((void) V)
 
-typedef struct dictEntry {
-    void *key;
-    void *val;
-    struct dictEntry *next;
+typedef struct dictEntry { // 字典条目
+    void *key;              // 键
+    void *val;              // 值
+    struct dictEntry *next; // 指向下一个条目
 } dictEntry;
 
 typedef struct dictType {

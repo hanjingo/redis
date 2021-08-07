@@ -423,7 +423,7 @@ typedef long long mstime_t; /* millisecond time type. */
 /* The actual Redis Object */
 #define REDIS_LRU_BITS 24
 #define REDIS_LRU_CLOCK_MAX ((1<<REDIS_LRU_BITS)-1) /* Max value of obj->lru */
-#define REDIS_LRU_CLOCK_RESOLUTION 1000 /* LRU clock resolution in ms */
+#define REDIS_LRU_CLOCK_RESOLUTION 1000 /* 缓存淘汰周期（ms） */
 typedef struct redisObject { // redis基本数据对象
     unsigned type:4;             // 数据类型;
     unsigned encoding:4;         // 编码方式;
@@ -462,12 +462,12 @@ struct evictionPoolEntry {
     sds key;                    /* Key name. */
 };
 
-/* Redis database representation. There are multiple databases identified
- * by integers from 0 (the default database) up to the max configured
- * database. The database number is the 'id' field in the structure. */
+/**
+ * @brief redis数据库
+ **/
 typedef struct redisDb {
-    dict *dict;                 /* The keyspace for this DB */
-    dict *expires;              /* Timeout of keys with a timeout set */
+    dict *dict;                 /* 键空间，保存了数据库中所有的键值对 */
+    dict *expires;              /* 键的过期字典，key：键，value：过期时间 */
     dict *blocking_keys;        /* Keys with clients waiting for data (BLPOP) */
     dict *ready_keys;           /* Blocked keys that received a PUSH */
     dict *watched_keys;         /* WATCHED keys for MULTI/EXEC CAS */
@@ -529,7 +529,7 @@ typedef struct readyList {
 typedef struct redisClient {
     uint64_t id;            /* Client incremental unique ID. */
     int fd;
-    redisDb *db;
+    redisDb *db;            /* 当前正在使用的数据库 */
     int dictid;
     robj *name;             /* As set by CLIENT SETNAME */
     sds querybuf;
@@ -669,7 +669,7 @@ struct redisServer {
     pid_t pid;                  /* Main process pid. */
     char *configfile;           /* Absolute config file path, or NULL */
     int hz;                     /* serverCron() calls frequency in hertz */
-    redisDb *db;
+    redisDb *db;                /* 数据库数组 */
     dict *commands;             /* Command table */
     dict *orig_commands;        /* Command table before command renaming. */
     aeEventLoop *el;
@@ -748,7 +748,7 @@ struct redisServer {
     int tcpkeepalive;               /* Set SO_KEEPALIVE if non-zero. */
     int active_expire_enabled;      /* Can be disabled for testing purposes. */
     size_t client_max_querybuf_len; /* Limit for client query buffer length */
-    int dbnum;                      /* Total number of configured DBs */
+    int dbnum;                      /* 数据库个数，默认16个 */
     int daemonize;                  /* True if running as a daemon */
     clientBufferLimitsConfig client_obuf_limits[REDIS_CLIENT_TYPE_COUNT];
     /* AOF persistence */

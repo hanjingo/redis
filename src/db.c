@@ -40,7 +40,7 @@ void slotToKeyFlush(void);
 /*-----------------------------------------------------------------------------
  * C-level DB API
  *----------------------------------------------------------------------------*/
-
+/** @brief 查找key */
 robj *lookupKey(redisDb *db, robj *key) {
     dictEntry *de = dictFind(db->dict,key->ptr);
     if (de) {
@@ -86,12 +86,12 @@ robj *lookupKeyWriteOrReply(redisClient *c, robj *key, robj *reply) {
     return o;
 }
 
-/* Add the key to the DB. It's up to the caller to increment the reference
- * counter of the value if needed.
- *
- * The program is aborted if the key already exists. */
+/**
+ * @brief 向数据库中添加键值对
+ * @param db 数据库 @param key 键 @param val 值
+ **/
 void dbAdd(redisDb *db, robj *key, robj *val) {
-    sds copy = sdsdup(key->ptr);
+    sds copy = sdsdup(key->ptr); // 创建key的副本
     int retval = dictAdd(db->dict, copy, val);
 
     redisAssertWithInfo(NULL,key,retval == REDIS_OK);
@@ -158,7 +158,7 @@ robj *dbRandomKey(redisDb *db) {
     }
 }
 
-/* Delete a key, value, and associated expiration entry if any, from the DB */
+/** @brief 从数据库删除指定的key以及它对应的值 */
 int dbDelete(redisDb *db, robj *key) {
     /* Deleting an entry from the expires dict will not free the sds of
      * the key, because it is shared with the main dictionary. */
@@ -768,7 +768,7 @@ void moveCommand(redisClient *c) {
 /*-----------------------------------------------------------------------------
  * Expires API
  *----------------------------------------------------------------------------*/
-
+/** @brief 删除键的过期时间 */
 int removeExpire(redisDb *db, robj *key) {
     /* An expire may only be removed if there is a corresponding entry in the
      * main dict. Otherwise, the key will never be freed. */
@@ -963,7 +963,7 @@ void ttlCommand(redisClient *c) {
 void pttlCommand(redisClient *c) {
     ttlGenericCommand(c, 1);
 }
-
+/** @brief 删除键的过期时间 */
 void persistCommand(redisClient *c) {
     dictEntry *de;
 

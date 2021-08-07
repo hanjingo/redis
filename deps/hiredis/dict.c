@@ -131,14 +131,14 @@ static int dictExpand(dict *ht, unsigned long size) {
     return DICT_OK;
 }
 
-/* Add an element to the target hash table */
+/** @brief 添加元素到hash表 */
 static int dictAdd(dict *ht, void *key, void *val) {
     int index;
     dictEntry *entry;
 
     /* Get the index of the new element, or -1 if
      * the element already exists. */
-    if ((index = _dictKeyIndex(ht, key)) == -1)
+    if ((index = _dictKeyIndex(ht, key)) == -1) // 已经存在就退出
         return DICT_ERR;
 
     /* Allocates the memory and stores key */
@@ -153,19 +153,19 @@ static int dictAdd(dict *ht, void *key, void *val) {
     return DICT_OK;
 }
 
-/* Add an element, discarding the old if the key already exists.
- * Return 1 if the key was added from scratch, 0 if there was already an
- * element with such key and dictReplace() just performed a value update
- * operation. */
+/**
+ * @brief 更新键的值
+ * 
+ **/
 static int dictReplace(dict *ht, void *key, void *val) {
     dictEntry *entry, auxentry;
 
     /* Try to add the element. If the key
      * does not exists dictAdd will suceed. */
-    if (dictAdd(ht, key, val) == DICT_OK)
+    if (dictAdd(ht, key, val) == DICT_OK) // 先试着添加，成功就直接返回
         return 1;
     /* It already exists, get the entry */
-    entry = dictFind(ht, key);
+    entry = dictFind(ht, key); // 找到已有的kv
     /* Free the old value and set the new one */
     /* Set the new value and free the old one. Note that it is important
      * to do that in this order, as the value may just be exactly the same
@@ -178,7 +178,7 @@ static int dictReplace(dict *ht, void *key, void *val) {
     return 0;
 }
 
-/* Search and remove an element */
+/** @brief 从字典中查找并删除指定的key */
 static int dictDelete(dict *ht, const void *key) {
     unsigned int h;
     dictEntry *de, *prevde;
@@ -239,7 +239,7 @@ static void dictRelease(dict *ht) {
     _dictClear(ht);
     free(ht);
 }
-
+/** @brief 查找key */
 static dictEntry *dictFind(dict *ht, const void *key) {
     dictEntry *he;
     unsigned int h;
@@ -314,9 +314,9 @@ static unsigned long _dictNextPower(unsigned long size) {
     }
 }
 
-/* Returns the index of a free slot that can be populated with
- * an hash entry for the given 'key'.
- * If the key already exists, -1 is returned. */
+/**
+ * @brief 判断key是否存在，如果存在，返回-1
+ **/
 static int _dictKeyIndex(dict *ht, const void *key) {
     unsigned int h;
     dictEntry *he;
