@@ -246,7 +246,7 @@ void setTypeConvert(robj *setobj, int enc) {
         redisPanic("Unsupported set conversion");
     }
 }
-
+/** @brief SADD命令 */
 void saddCommand(redisClient *c) {
     robj *set;
     int j, added = 0;

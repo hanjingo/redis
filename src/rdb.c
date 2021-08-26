@@ -715,7 +715,7 @@ werr: /* Write error. */
     return REDIS_ERR;
 }
 
-/* Save the DB on disk. Return REDIS_ERR on error, REDIS_OK on success. */
+/** @brief 保存RDB文件到磁盘 @param filename RDB文件路径 */
 int rdbSave(char *filename) {
     char tmpfile[256];
     FILE *fp;
@@ -723,7 +723,7 @@ int rdbSave(char *filename) {
     int error;
 
     snprintf(tmpfile,256,"temp-%d.rdb", (int) getpid());
-    fp = fopen(tmpfile,"w");
+    fp = fopen(tmpfile,"w"); /* 创建临时文件 temp-进程ID.rdb */
     if (!fp) {
         redisLog(REDIS_WARNING, "Failed opening .rdb for saving: %s",
             strerror(errno));
@@ -731,7 +731,7 @@ int rdbSave(char *filename) {
     }
 
     rioInitWithFile(&rdb,fp);
-    if (rdbSaveRio(&rdb,&error) == REDIS_ERR) {
+    if (rdbSaveRio(&rdb,&error) == REDIS_ERR) { /* 复制一份RDB副本并保存到临时文件 */
         errno = error;
         goto werr;
     }
@@ -743,7 +743,7 @@ int rdbSave(char *filename) {
 
     /* Use RENAME to make sure the DB file is changed atomically only
      * if the generate DB file is ok. */
-    if (rename(tmpfile,filename) == -1) {
+    if (rename(tmpfile,filename) == -1) { /* 重命名临时文件 */
         redisLog(REDIS_WARNING,"Error moving temp DB file on the final destination: %s", strerror(errno));
         unlink(tmpfile);
         return REDIS_ERR;
@@ -1125,7 +1125,7 @@ void rdbLoadProgressCallback(rio *r, const void *buf, size_t len) {
         processEventsWhileBlocked();
     }
 }
-
+/** @brief 载入RDB文件 @param filename 文件路径 */
 int rdbLoad(char *filename) {
     uint32_t dbid;
     int type, rdbver;
@@ -1138,7 +1138,7 @@ int rdbLoad(char *filename) {
     if ((fp = fopen(filename,"r")) == NULL) return REDIS_ERR;
 
     rioInitWithFile(&rdb,fp);
-    rdb.update_cksum = rdbLoadProgressCallback;
+    rdb.update_cksum = rdbLoadProgressCallback; /* 设置回调函数 */
     rdb.max_processing_chunk = server.loading_process_events_interval_bytes;
     if (rioRead(&rdb,buf,9) == 0) goto eoferr;
     buf[9] = '\0';
@@ -1156,7 +1156,7 @@ int rdbLoad(char *filename) {
         return REDIS_ERR;
     }
 
-    startLoading(fp);
+    startLoading(fp); /* 开始载入... */
     while(1) {
         robj *key, *val;
         expiretime = -1;
@@ -1178,7 +1178,7 @@ int rdbLoad(char *filename) {
             if ((type = rdbLoadType(&rdb)) == -1) goto eoferr;
         }
 
-        if (type == REDIS_RDB_OPCODE_EOF)
+        if (type == REDIS_RDB_OPCODE_EOF) /* 读完了 */
             break;
 
         /* Handle SELECT DB opcode as a special case */

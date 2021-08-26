@@ -756,9 +756,9 @@ int activeExpireCycleTryExpire(redisDb *db, dictEntry *de, long long now) {
 void activeExpireCycle(int type) {
     /* This function has some global state in order to continue the work
      * incrementally across calls. */
-    static unsigned int current_db = 0; /* Last DB tested. */
-    static int timelimit_exit = 0;      /* Time limit hit in previous call? */
-    static long long last_fast_cycle = 0; /* When last fast cycle ran. */
+    static unsigned int current_db = 0;     /* 当前检查的进度(局部静态变量，外部不可见) */
+    static int timelimit_exit = 0;          /* Time limit hit in previous call?(局部静态变量，外部不可见) */
+    static long long last_fast_cycle = 0;   /* 上一次“快模式”开始时间.(局部静态变量，外部不可见) */
 
     int j, iteration = 0;
     int dbs_per_call = REDIS_DBCRON_DBS_PER_CALL;
@@ -780,7 +780,7 @@ void activeExpireCycle(int type) {
      * 2) If last time we hit the time limit, we want to scan all DBs
      * in this iteration, as there is work to do in some DB and we don't want
      * expired keys to use memory for too much time. */
-    if (dbs_per_call > server.dbnum || timelimit_exit)
+    if (dbs_per_call > server.dbnum || timelimit_exit) /*扫描的数据库数量不允许大于当前数据库个数*/
         dbs_per_call = server.dbnum;
 
     /* We can use at max ACTIVE_EXPIRE_CYCLE_SLOW_TIME_PERC percentage of CPU time
@@ -836,9 +836,9 @@ void activeExpireCycle(int type) {
             while (num--) {
                 dictEntry *de;
                 long long ttl;
-
+                /* 从过期字典中随机抽取key进行检查 */
                 if ((de = dictGetRandomKey(db->expires)) == NULL) break;
-                ttl = dictGetSignedIntegerVal(de)-now;
+                ttl = dictGetSignedIntegerVal(de)-now; /* 计算ttl */
                 if (activeExpireCycleTryExpire(db,de,now)) expired++;
                 if (ttl > 0) {
                     /* We want the average TTL of keys yet not expired. */

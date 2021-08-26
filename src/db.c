@@ -276,7 +276,7 @@ void flushallCommand(redisClient *c) {
     }
     server.dirty++;
 }
-
+/** @brief DEL命令 */
 void delCommand(redisClient *c) {
     int deleted = 0, j;
 
@@ -800,7 +800,7 @@ long long getExpire(redisDb *db, robj *key) {
     redisAssertWithInfo(NULL,key,dictFind(db->dict,key->ptr) != NULL);
     return dictGetSignedIntegerVal(de);
 }
-
+/* 广播过期键的删除事件 */
 /* Propagate expires into slaves and the AOF file.
  * When a key expires in the master, a DEL operation for this key is sent
  * to all the slaves and the AOF file if enabled.
@@ -824,23 +824,23 @@ void propagateExpire(redisDb *db, robj *key) {
     decrRefCount(argv[0]);
     decrRefCount(argv[1]);
 }
-
+/** @brief 惰性删除策略 @param db 数据库 @param key 键 */
 int expireIfNeeded(redisDb *db, robj *key) {
-    mstime_t when = getExpire(db,key);
+    mstime_t when = getExpire(db,key); /* 获得过期时间 */
     mstime_t now;
 
     if (when < 0) return 0; /* No expire for this key */
 
     /* Don't expire anything while loading. It will be done later. */
     if (server.loading) return 0;
-
+    /* 如果有lua调用，把当前时间设置为调用开始的时间，方式lua运行期key被删除 */
     /* If we are in the context of a Lua script, we claim that time is
      * blocked to when the Lua script started. This way a key can expire
      * only the first time it is accessed and not in the middle of the
      * script execution, making propagation to slaves / AOF consistent.
      * See issue #1525 on Github for more information. */
     now = server.lua_caller ? server.lua_time_start : mstime();
-
+    /* 如果当前节点不是master，退出(slave节点没权限删除过期键) */
     /* If we are running in the context of a slave, return ASAP:
      * the slave key expiration is controlled by the master that will
      * send us synthesized DEL operations for expired keys.
@@ -853,7 +853,7 @@ int expireIfNeeded(redisDb *db, robj *key) {
     /* Return when this key has not expired */
     if (now <= when) return 0;
 
-    /* Delete the key */
+    /* 开始删除 */
     server.stat_expiredkeys++;
     propagateExpire(db,key);
     notifyKeyspaceEvent(REDIS_NOTIFY_EXPIRED,
