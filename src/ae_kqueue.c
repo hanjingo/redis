@@ -100,7 +100,7 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
         kevent(state->kqfd, &ke, 1, NULL, 0, NULL);
     }
 }
-
+/** @brief 在指定时间内，阻塞并等待所有被aeCreateFileEvent设置为监听状态的套接字产生文件事件 @param eventLoop 事件循环 @param tvp 指定时间 */
 static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
     aeApiState *state = eventLoop->apidata;
     int retval, numevents = 0;

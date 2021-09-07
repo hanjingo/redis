@@ -1368,13 +1368,13 @@ void backgroundSaveDoneHandlerSocket(int exitcode, int bysignal) {
     updateSlavesWaitingBgsave((!bysignal && exitcode == 0) ? REDIS_OK : REDIS_ERR, REDIS_RDB_CHILD_TYPE_SOCKET);
 }
 
-/* When a background RDB saving/transfer terminates, call the right handler. */
+/* RDB文件后台保存完成回调 */
 void backgroundSaveDoneHandler(int exitcode, int bysignal) {
     switch(server.rdb_child_type) {
-    case REDIS_RDB_CHILD_TYPE_DISK:
+    case REDIS_RDB_CHILD_TYPE_DISK: /* 保存到磁盘完成 */
         backgroundSaveDoneHandlerDisk(exitcode,bysignal);
         break;
-    case REDIS_RDB_CHILD_TYPE_SOCKET:
+    case REDIS_RDB_CHILD_TYPE_SOCKET: /* 保存到网络完成 */
         backgroundSaveDoneHandlerSocket(exitcode,bysignal);
         break;
     default:

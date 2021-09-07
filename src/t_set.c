@@ -246,7 +246,7 @@ void setTypeConvert(robj *setobj, int enc) {
         redisPanic("Unsupported set conversion");
     }
 }
-
+/** @brief SADD命令的实现 */
 void saddCommand(redisClient *c) {
     robj *set;
     int j, added = 0;
@@ -266,9 +266,9 @@ void saddCommand(redisClient *c) {
         c->argv[j] = tryObjectEncoding(c->argv[j]);
         if (setTypeAdd(set,c->argv[j])) added++;
     }
-    if (added) {
+    if (added) { /* 如果至少有一个元素被成功添加，执行下面程序 */
         signalModifiedKey(c->db,c->argv[1]);
-        notifyKeyspaceEvent(REDIS_NOTIFY_SET,"sadd",c->argv[1],c->db->id);
+        notifyKeyspaceEvent(REDIS_NOTIFY_SET,"sadd",c->argv[1],c->db->id); /* 发送事件通知 */
     }
     server.dirty += added;
     addReplyLongLong(c,added);

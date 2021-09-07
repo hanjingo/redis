@@ -609,7 +609,7 @@ static void acceptCommonHandler(int fd, int flags) {
     server.stat_numconnections++;
     c->flags |= flags;
 }
-
+/** @brief 连接应答处理器 @param el 事件循环 @param fd 套接字描述符 @param privdata 私有事件 @param mask 事件类型 */
 void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     int cport, cfd, max = MAX_ACCEPTS_PER_CALL;
     char cip[REDIS_IP_STR_LEN];

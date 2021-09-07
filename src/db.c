@@ -49,7 +49,7 @@ robj *lookupKey(redisDb *db, robj *key) {
         /* Update the access time for the ageing algorithm.
          * Don't do it if we have a saving child, as this will trigger
          * a copy on write madness. */
-        if (server.rdb_child_pid == -1 && server.aof_child_pid == -1)
+        if (server.rdb_child_pid == -1 && server.aof_child_pid == -1) /*没有在持久化*/
             val->lru = LRU_CLOCK();
         return val;
     } else {
@@ -276,15 +276,15 @@ void flushallCommand(redisClient *c) {
     }
     server.dirty++;
 }
-
+/** @brief DEL命令的实现函数 */
 void delCommand(redisClient *c) {
     int deleted = 0, j;
-
+    /* 遍历所有输入键 */
     for (j = 1; j < c->argc; j++) {
         expireIfNeeded(c->db,c->argv[j]);
-        if (dbDelete(c->db,c->argv[j])) {
+        if (dbDelete(c->db,c->argv[j])) { /* 尝试删除键 */
             signalModifiedKey(c->db,c->argv[j]);
-            notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC,
+            notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC, /* 删除键成功，发送通知 */
                 "del",c->argv[j],c->db->id);
             server.dirty++;
             deleted++;

@@ -85,13 +85,13 @@ sds keyspaceEventsFlagsToString(int flags) {
     return res;
 }
 
-/* The API provided to the rest of the Redis core is a simple function:
- *
- * notifyKeyspaceEvent(char *event, robj *key, int dbid);
- *
- * 'event' is a C string representing the event name.
- * 'key' is a Redis object representing the key name.
- * 'dbid' is the database ID where the key lives.  */
+/**
+ * @brief 发送数据库通知
+ * @param type 当前想要发送的通知类型
+ * @param event 事件名称
+ * @param key 产生事件的键
+ * @param dbid 产生事件的数据库号码
+ */
 void notifyKeyspaceEvent(int type, char *event, robj *key, int dbid) {
     sds chan;
     robj *chanobj, *eventobj;

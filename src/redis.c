@@ -694,10 +694,10 @@ int incrementallyRehash(int dbid) {
  * for dict.c to resize the hash tables accordingly to the fact we have o not
  * running childs. */
 void updateDictResizePolicy(void) {
-    if (server.rdb_child_pid == -1 && server.aof_child_pid == -1)
-        dictEnableResize();
+    if (server.rdb_child_pid == -1 && server.aof_child_pid == -1) /*没有在进行持久化操作*/
+        dictEnableResize(); /*启用字典调整*/
     else
-        dictDisableResize();
+        dictDisableResize(); /*关闭字典调整*/
 }
 
 /* ======================= Cron: called every 100 ms ======================== */
@@ -906,10 +906,10 @@ long long getInstantaneousMetric(int metric) {
     return sum / REDIS_METRIC_SAMPLES;
 }
 
-/* Check for timeouts. Returns non-zero if the client was terminated.
- * The function gets the current time in milliseconds as argument since
- * it gets called multiple times in a loop, so calling gettimeofday() for
- * each iteration would be costly without any actual gain. */
+/** @brief 检查客户端与服务器之间的连接是否超时
+ * @param c Redis客户端
+ * @param now_ms 当前时间（ms）
+ * @param 返回值 超时：非0值，未超时：0*/
 int clientsCronHandleTimeout(redisClient *c, mstime_t now_ms) {
     time_t now = now_ms/1000;
 
@@ -942,10 +942,10 @@ int clientsCronHandleTimeout(redisClient *c, mstime_t now_ms) {
     return 0;
 }
 
-/* The client query buffer is an sds.c string that can end with a lot of
- * free space not used, this function reclaims space if needed.
- *
- * The function always returns 0 as it never terminates the client. */
+/**
+ * @brief 如果缓冲区大于REDIS_MBULK_BIG_ARG时，重置查询缓冲区
+ * @param c Redis客户端
+ **/
 int clientsCronResizeQueryBuffer(redisClient *c) {
     size_t querybuf_size = sdsAllocSize(c->querybuf);
     time_t idletime = server.unixtime - c->lastinteraction;
@@ -967,7 +967,7 @@ int clientsCronResizeQueryBuffer(redisClient *c) {
     c->querybuf_peak = 0;
     return 0;
 }
-
+/** @brief 管理客户端资源 */
 #define CLIENTS_CRON_MIN_ITERATIONS 5
 void clientsCron(void) {
     /* Make sure to process at least numclients/server.hz of clients
@@ -998,14 +998,14 @@ void clientsCron(void) {
         /* The following functions do different service checks on the client.
          * The protocol is that they return non-zero if the client was
          * terminated. */
-        if (clientsCronHandleTimeout(c,now)) continue;
-        if (clientsCronResizeQueryBuffer(c)) continue;
+        if (clientsCronHandleTimeout(c,now)) continue; /* 检查客户端与服务器之间的连接是否超时 */
+        if (clientsCronResizeQueryBuffer(c)) continue; /* 如果缓冲区大于REDIS_MBULK_BIG_ARG时，重置查询缓冲区 */
     }
 }
 
-/* This function handles 'background' operations we are required to do
- * incrementally in Redis databases, such as active key expiring, resizing,
- * rehashing. */
+/**
+ * @brief 后台对一部分数据库进行检查，删除其中的过期键，在有需要时，对字典进行收缩操作 
+ **/
 void databasesCron(void) {
     /* Expire keys by random sampling. Not required for slaves
      * as master will synthesize DELs for us. */
@@ -1048,10 +1048,10 @@ void databasesCron(void) {
     }
 }
 
-/* We take a cached value of the unix time in the global state because with
- * virtual memory and aging there is to store the current time in objects at
- * every object access, and accuracy is not needed. To access a global var is
- * a lot faster than calling time(NULL) */
+/**
+ * @brief 更新时间缓存
+ * 
+ **/
 void updateCachedTime(void) {
     server.unixtime = time(NULL);
     server.mstime = mstime();
@@ -1087,7 +1087,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     if (server.watchdog_period) watchdogScheduleSignal(server.watchdog_period);
 
     /* Update the time cache. */
-    updateCachedTime();
+    updateCachedTime(); /* 更新缓存时间 */
 
     run_with_period(100) {
         trackInstantaneousMetric(REDIS_METRIC_COMMAND,server.stat_numcommands);
@@ -1108,17 +1108,17 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
      *
      * Note that you can change the resolution altering the
      * REDIS_LRU_CLOCK_RESOLUTION define. */
-    server.lruclock = getLRUClock();
+    server.lruclock = getLRUClock(); /* 更新LRU时钟（LRU：对象最后一次被命令访问的的时间），用于计算键的空转 */
 
-    /* Record the max memory used since the server was started. */
+    /* 如果内存使用超过内存峰值，更新它 */
     if (zmalloc_used_memory() > server.stat_peak_memory)
         server.stat_peak_memory = zmalloc_used_memory();
 
     /* Sample the RSS here since this is a relatively slow call. */
     server.resident_set_size = zmalloc_get_rss();
 
-    /* We received a SIGTERM, shutting down here in a safe way, as it is
-     * not ok doing so inside the signal handler. */
+    /* 如果服务器标记标识，关闭服务器 
+     **/
     if (server.shutdown_asap) {
         if (prepareForShutdown(0) == REDIS_OK) exit(0);
         redisLog(REDIS_WARNING,"SIGTERM received but errors trying to shut down the server, check the logs for more information");
@@ -1151,26 +1151,26 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
         }
     }
 
-    /* We need to do a few operations on clients asynchronously. */
+    /* 管理客户端资源 */
     clientsCron();
 
-    /* Handle background operations on Redis databases. */
+    /* 管理数据库资源 */
     databasesCron();
 
-    /* Start a scheduled AOF rewrite if this was requested by the user while
-     * a BGSAVE was in progress. */
+    /* 将BGREWRITEAOF延迟到BGSAVE执行完毕之后
+     **/
     if (server.rdb_child_pid == -1 && server.aof_child_pid == -1 &&
         server.aof_rewrite_scheduled)
     {
         rewriteAppendOnlyFileBackground();
     }
 
-    /* Check if a background saving or AOF rewrite in progress terminated. */
+    /* 检查后台持久化运行状态 */
     if (server.rdb_child_pid != -1 || server.aof_child_pid != -1) {
         int statloc;
         pid_t pid;
 
-        if ((pid = wait3(&statloc,WNOHANG,NULL)) != 0) {
+        if ((pid = wait3(&statloc,WNOHANG,NULL)) != 0) { /* 有信号发来服务器进程 */
             int exitcode = WEXITSTATUS(statloc);
             int bysignal = 0;
 
@@ -1183,26 +1183,26 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
                     (int) server.rdb_child_pid,
                     (int) server.aof_child_pid);
             } else if (pid == server.rdb_child_pid) {
-                backgroundSaveDoneHandler(exitcode,bysignal);
+                backgroundSaveDoneHandler(exitcode,bysignal); /* RDB后台保存完成回调 */
             } else if (pid == server.aof_child_pid) {
-                backgroundRewriteDoneHandler(exitcode,bysignal);
+                backgroundRewriteDoneHandler(exitcode,bysignal); /* AOF后台重写完成回调 */
             } else {
                 redisLog(REDIS_WARNING,
                     "Warning, detected child with unmatched pid: %ld",
                     (long)pid);
             }
-            updateDictResizePolicy();
+            updateDictResizePolicy(); /* 如果没有在后台运行保存，则启用字典调整 */
         }
-    } else {
-        /* If there is not a background saving/rewrite in progress check if
-         * we have to save/rewrite now */
+    } else { /* 没有在进行持久化操作 */
+
+         /* 检查现在是否需要保存/重写 */
          for (j = 0; j < server.saveparamslen; j++) {
             struct saveparam *sp = server.saveparams+j;
 
-            /* Save if we reached the given amount of changes,
-             * the given amount of seconds, and if the latest bgsave was
-             * successful or if, in case of an error, at least
-             * REDIS_BGSAVE_RETRY_DELAY seconds already elapsed. */
+
+
+
+            /* 自动保存条件已经满足 */
             if (server.dirty >= sp->changes &&
                 server.unixtime-server.lastsave > sp->seconds &&
                 (server.unixtime-server.lastbgsave_try >
@@ -1216,7 +1216,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
             }
          }
 
-         /* Trigger an AOF rewrite if needed */
+         /* 触发AOF文件重写操作 */
          if (server.rdb_child_pid == -1 &&
              server.aof_child_pid == -1 &&
              server.aof_rewrite_perc &&
@@ -1233,8 +1233,8 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     }
 
 
-    /* AOF postponed flush: Try at every cron cycle if the slow fsync
-     * completed. */
+
+    /* 缓冲区刷入AOF文件 */
     if (server.aof_flush_postponed_start) flushAppendOnlyFile(0);
 
     /* AOF write errors: in this case we have a buffer to flush as well and
@@ -1246,10 +1246,10 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
             flushAppendOnlyFile(0);
     }
 
-    /* Close clients that need to be closed asynchronous */
+    /* 关闭异步客户端 */
     freeClientsInAsyncFreeQueue();
 
-    /* Clear the paused clients flag if needed. */
+    /* 如果需要，清空暂停的客户端标记 */
     clientsArePaused(); /* Don't check return value, just use the side effect. */
 
     /* Replication cron function -- used to reconnect to master and
@@ -1271,7 +1271,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
         migrateCloseTimedoutSockets();
     }
 
-    server.cronloops++;
+    server.cronloops++; /* 增加cronloops计数器 */
     return 1000/server.hz;
 }
 
@@ -1411,16 +1411,16 @@ void createSharedObjects(void) {
     shared.minstring = createStringObject("minstring",9);
     shared.maxstring = createStringObject("maxstring",9);
 }
-
+/* 初始化server变量 */
 void initServerConfig(void) {
     int j;
 
-    getRandomHexChars(server.runid,REDIS_RUN_ID_SIZE);
-    server.configfile = NULL;
-    server.hz = REDIS_DEFAULT_HZ;
+    getRandomHexChars(server.runid,REDIS_RUN_ID_SIZE);  /* 设置服务器的运行ID */
+    server.configfile = NULL;                           /* 设置配置文件绝对路径 */
+    server.hz = REDIS_DEFAULT_HZ;                       /* 设置默认运行频率 */
     server.runid[REDIS_RUN_ID_SIZE] = '\0';
-    server.arch_bits = (sizeof(long) == 8) ? 64 : 32;
-    server.port = REDIS_SERVERPORT;
+    server.arch_bits = (sizeof(long) == 8) ? 64 : 32;   /* 设置服务器运行架构 */
+    server.port = REDIS_SERVERPORT;                     /* 设置服务器TCP端口 */
     server.tcp_backlog = REDIS_TCP_BACKLOG;
     server.bindaddr_count = 0;
     server.unixsocket = NULL;
@@ -2071,7 +2071,7 @@ void call(redisClient *c, int flags) {
     redisOpArrayInit(&server.also_propagate);
     dirty = server.dirty;
     start = ustime();
-    c->cmd->proc(c);
+    c->cmd->proc(c); /* 回调客户端 */
     duration = ustime()-start;
     dirty = server.dirty-dirty;
     if (dirty < 0) dirty = 0;
