@@ -104,7 +104,7 @@ void notifyKeyspaceEvent(int type, char *event, robj *key, int dbid) {
     eventobj = createStringObject(event,strlen(event));
 
     /* __keyspace@<db>__:<key> <event> notifications. */
-    if (server.notify_keyspace_events & REDIS_NOTIFY_KEYSPACE) {
+    if (server.notify_keyspace_events & REDIS_NOTIFY_KEYSPACE) { /* 键空间通知 */
         chan = sdsnewlen("__keyspace@",11);
         len = ll2string(buf,sizeof(buf),dbid);
         chan = sdscatlen(chan, buf, len);
@@ -116,7 +116,7 @@ void notifyKeyspaceEvent(int type, char *event, robj *key, int dbid) {
     }
 
     /* __keyevente@<db>__:<event> <key> notifications. */
-    if (server.notify_keyspace_events & REDIS_NOTIFY_KEYEVENT) {
+    if (server.notify_keyspace_events & REDIS_NOTIFY_KEYEVENT) { /* 键事件通知 */
         chan = sdsnewlen("__keyevent@",11);
         if (len == -1) len = ll2string(buf,sizeof(buf),dbid);
         chan = sdscatlen(chan, buf, len);

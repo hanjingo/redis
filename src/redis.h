@@ -130,11 +130,11 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_MIN_RESERVED_FDS 32
 #define REDIS_DEFAULT_LATENCY_MONITOR_THRESHOLD 0
 
-#define ACTIVE_EXPIRE_CYCLE_LOOKUPS_PER_LOOP 20 /* Loopkups per loop. */
-#define ACTIVE_EXPIRE_CYCLE_FAST_DURATION 1000 /* Microseconds */
-#define ACTIVE_EXPIRE_CYCLE_SLOW_TIME_PERC 25 /* CPU max % for keys collection */
-#define ACTIVE_EXPIRE_CYCLE_SLOW 0
-#define ACTIVE_EXPIRE_CYCLE_FAST 1
+#define ACTIVE_EXPIRE_CYCLE_LOOKUPS_PER_LOOP 20 /* 一次取20个key来检查是否过期 */
+#define ACTIVE_EXPIRE_CYCLE_FAST_DURATION 1000  /* 快模式的循环周期时间(1000微秒) */
+#define ACTIVE_EXPIRE_CYCLE_SLOW_TIME_PERC 25   /* 进行key回收时最多占用的CPU消耗百分比(25%) */
+#define ACTIVE_EXPIRE_CYCLE_SLOW 0              /* 慢模式 */
+#define ACTIVE_EXPIRE_CYCLE_FAST 1              /* 快模式 */
 
 /* Instantaneous metrics tracking. */
 #define REDIS_METRIC_SAMPLES 16     /* Number of samples per metric. */
@@ -387,18 +387,18 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_RDB_CHILD_TYPE_DISK 1     /* RDB文件保存到磁盘 */
 #define REDIS_RDB_CHILD_TYPE_SOCKET 2   /* RDB文件保存到网络 */
 
-/* Keyspace changes notification classes. Every class is associated with a
- * character for configuration purposes. */
-#define REDIS_NOTIFY_KEYSPACE (1<<0)    /* K */
-#define REDIS_NOTIFY_KEYEVENT (1<<1)    /* E */
-#define REDIS_NOTIFY_GENERIC (1<<2)     /* g */
-#define REDIS_NOTIFY_STRING (1<<3)      /* $ */
-#define REDIS_NOTIFY_LIST (1<<4)        /* l */
-#define REDIS_NOTIFY_SET (1<<5)         /* s */
-#define REDIS_NOTIFY_HASH (1<<6)        /* h */
-#define REDIS_NOTIFY_ZSET (1<<7)        /* z */
-#define REDIS_NOTIFY_EXPIRED (1<<8)     /* x */
-#define REDIS_NOTIFY_EVICTED (1<<9)     /* e */
+/* 数据库通知 */
+
+#define REDIS_NOTIFY_KEYSPACE (1<<0)    /* K 键空间通知 */
+#define REDIS_NOTIFY_KEYEVENT (1<<1)    /* E 键事件通知 */
+#define REDIS_NOTIFY_GENERIC (1<<2)     /* g 类型无关的通用命令通知 */
+#define REDIS_NOTIFY_STRING (1<<3)      /* $ 字符串命令通知 */
+#define REDIS_NOTIFY_LIST (1<<4)        /* l 列表命令通知 */
+#define REDIS_NOTIFY_SET (1<<5)         /* s 集合命令通知 */
+#define REDIS_NOTIFY_HASH (1<<6)        /* h 哈希命令通知 */
+#define REDIS_NOTIFY_ZSET (1<<7)        /* z 有序集合命令通知 */
+#define REDIS_NOTIFY_EXPIRED (1<<8)     /* x 过期事件 */
+#define REDIS_NOTIFY_EVICTED (1<<9)     /* e 驱逐事件 */
 #define REDIS_NOTIFY_ALL (REDIS_NOTIFY_GENERIC | REDIS_NOTIFY_STRING | REDIS_NOTIFY_LIST | REDIS_NOTIFY_SET | REDIS_NOTIFY_HASH | REDIS_NOTIFY_ZSET | REDIS_NOTIFY_EXPIRED | REDIS_NOTIFY_EVICTED)      /* A */
 
 /* Get the first bind addr or NULL */
@@ -473,7 +473,7 @@ typedef struct redisDb {
     dict *watched_keys;         /* WATCHED keys for MULTI/EXEC CAS */
     struct evictionPoolEntry *eviction_pool;    /* Eviction pool of keys */
     int id;                     /* Database ID */
-    long long avg_ttl;          /* Average TTL, just for stats */
+    long long avg_ttl;          /* 平均的TTL时间 */
 } redisDb;
 
 /* Client MULTI/EXEC state */
@@ -577,10 +577,10 @@ typedef struct redisClient {
     int bufpos;                         /* buf目前已使用的字节数量 */
     char buf[REDIS_REPLY_CHUNK_BYTES];  /* 长度较小的回复缓冲区(16k大小) */
 } redisClient;
-
-struct saveparam { /* 配置save的参数 */
-    time_t seconds; /* 秒数 */
-    int changes;    /* 修改数 */
+/* 配置save的参数 */
+struct saveparam {
+    time_t seconds; // 秒数
+    int changes;    // 修改数
 };
 
 struct sharedObjectsStruct {
@@ -608,8 +608,8 @@ typedef struct zskiplistNode {
         unsigned int span;              // 前进指针和当前节点的距离，用来排位
     } level[];                          // 层高，随机[1,32]
 } zskiplistNode;
-
-typedef struct zskiplist { // 跳表
+/* 跳表 */
+typedef struct zskiplist {
     struct zskiplistNode *header, *tail; // 表头，表尾
     unsigned long length;                // 节点数量（不算表头）
     int level;                           // 最大层级
@@ -704,7 +704,7 @@ struct redisServer {
     dict *migrate_cached_sockets;/* MIGRATE cached sockets */
     uint64_t next_client_id;    /* Next client unique ID. Incremental. */
     /* RDB / AOF loading information */
-    int loading;                /* We are loading data from disk if true */
+    int loading;                /* 是否正在从硬盘加载数据 */
     off_t loading_total_bytes;
     off_t loading_loaded_bytes;
     time_t loading_start_time;
@@ -716,7 +716,7 @@ struct redisServer {
     time_t stat_starttime;          /* Server start time */
     long long stat_numcommands;     /* Number of processed commands */
     long long stat_numconnections;  /* Number of connections received */
-    long long stat_expiredkeys;     /* Number of expired keys */
+    long long stat_expiredkeys;     /* 过期键的数量 */
     long long stat_evictedkeys;     /* Number of evicted keys (maxmemory) */
     long long stat_keyspace_hits;   /* Number of successful lookups of keys */
     long long stat_keyspace_misses; /* Number of failed lookups of keys */
@@ -791,7 +791,7 @@ struct redisServer {
     long long dirty_before_bgsave;  /* Used to restore dirty on failed BGSAVE */
     pid_t rdb_child_pid;            /* 执行BGSAVE命令的进程ID */
     struct saveparam *saveparams;   /* 配置“save”的参数 <秒数> <修改数> */
-    int saveparamslen;              /* Number of saving points */
+    int saveparamslen;              /* 配置“save”的条数 */
     char *rdb_filename;             /* Name of RDB file */
     int rdb_compression;            /* Use compression in RDB? */
     int rdb_checksum;               /* Use RDB checksum? */
@@ -889,8 +889,8 @@ struct redisServer {
     /* Pubsub */
     dict *pubsub_channels;  /* 订阅的客户端字典：key:频道，value:客户端列表 */
     list *pubsub_patterns;  /* 订阅关系列表 */
-    int notify_keyspace_events; /* Events to propagate via Pub/Sub. This is an
-                                   xor of REDIS_NOTIFY... flags. */
+    int notify_keyspace_events; /* 数据库通知选项 */
+ 
     /* Cluster */
     int cluster_enabled;      /* Is cluster enabled? */
     mstime_t cluster_node_timeout; /* Cluster node timeout. */
@@ -906,7 +906,7 @@ struct redisServer {
     redisClient *lua_caller;   /* The client running EVAL right now, or NULL */
     dict *lua_scripts;         /* A dictionary of SHA1 -> Lua scripts */
     mstime_t lua_time_limit;  /* Script timeout in milliseconds */
-    mstime_t lua_time_start;  /* Start time of script, milliseconds time */
+    mstime_t lua_time_start;  /* lua脚本开始执行时间（ms） */
     int lua_write_dirty;  /* True if a write command was called during the
                              execution of the current script. */
     int lua_random_dirty; /* True if a random command was called during the

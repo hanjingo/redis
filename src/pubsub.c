@@ -221,7 +221,7 @@ int pubsubUnsubscribeAllPatterns(redisClient *c, int notify) {
     return count;
 }
 
-/* 发布消息 */
+/** @brief 发布消息 @param channel 频道名 @param message 消息 */
 int pubsubPublishMessage(robj *channel, robj *message) {
     int receivers = 0;
     dictEntry *de;

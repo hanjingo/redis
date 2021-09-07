@@ -300,7 +300,7 @@ void freeHashObject(robj *o) {
 void incrRefCount(robj *o) {
     o->refcount++;
 }
-// 引用计数-1；
+/** @brief 引用计数-1 */
 void decrRefCount(robj *o) {
     if (o->refcount <= 0) redisPanic("decrRefCount against refcount <= 0");
     if (o->refcount == 1) { // 最后一个引用时，释放对象
