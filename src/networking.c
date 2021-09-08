@@ -151,7 +151,7 @@ redisClient *createClient(int fd) {
  * Typically gets called every time a reply is built, before adding more
  * data to the clients output buffers. If the function returns REDIS_ERR no
  * data should be appended to the output buffers. */
-int prepareClientToWrite(redisClient *c) {
+int prepareClientToWrite(redisClient *c) { /* 在准备接受新数据之前调用此函数 */
     /* If it's the Lua client we always return ok without installing any
      * handler since there is no socket at all. */
     if (c->flags & REDIS_LUA_CLIENT) return REDIS_OK;
@@ -1108,7 +1108,7 @@ int processMultibulkBuffer(redisClient *c) {
     /* Still not read to process the command */
     return REDIS_ERR;
 }
-
+/** @brief 解析请求*/
 void processInputBuffer(redisClient *c) {
     /* Keep processing while there is something in the input buffer */
     while(sdslen(c->querybuf)) {
@@ -1153,7 +1153,7 @@ void processInputBuffer(redisClient *c) {
         }
     }
 }
-
+/** @brief 请求处理命令的入口 @param el 时间循环 @param fd 文件描述符 @param privdata redis客户端 @param mask ？ */
 void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     redisClient *c = (redisClient*) privdata;
     int nread, readlen;
@@ -1161,8 +1161,8 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     REDIS_NOTUSED(el);
     REDIS_NOTUSED(mask);
 
-    server.current_client = c;
-    readlen = REDIS_IOBUF_LEN;
+    server.current_client = c; /* 设置当前客户端 */
+    readlen = REDIS_IOBUF_LEN; /* 设置从socket读取的数据的默认大小(16kb) */
     /* If this is a multi bulk request, and we are processing a bulk reply
      * that is large enough, try to maximize the probability that the query
      * buffer contains exactly the SDS string representing the object, even
@@ -1170,19 +1170,19 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
      * processMultiBulkBuffer() can avoid copying buffers to create the
      * Redis Object representing the argument. */
     if (c->reqtype == REDIS_REQ_MULTIBULK && c->multibulklen && c->bulklen != -1
-        && c->bulklen >= REDIS_MBULK_BIG_ARG)
+        && c->bulklen >= REDIS_MBULK_BIG_ARG) /* 命令过长 */
     {
         int remaining = (unsigned)(c->bulklen+2)-sdslen(c->querybuf);
 
         if (remaining < readlen) readlen = remaining;
     }
-
+    /* 分配缓冲区，开始读数据 */
     qblen = sdslen(c->querybuf);
     if (c->querybuf_peak < qblen) c->querybuf_peak = qblen;
     c->querybuf = sdsMakeRoomFor(c->querybuf, readlen);
     nread = read(fd, c->querybuf+qblen, readlen);
     if (nread == -1) {
-        if (errno == EAGAIN) {
+        if (errno == EAGAIN) { /* 读不到数据 */
             nread = 0;
         } else {
             redisLog(REDIS_VERBOSE, "Reading from client: %s",strerror(errno));
@@ -1203,7 +1203,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
         server.current_client = NULL;
         return;
     }
-    if (sdslen(c->querybuf) > server.client_max_querybuf_len) {
+    if (sdslen(c->querybuf) > server.client_max_querybuf_len) { /* 缓冲区超过了配置值，关闭客户端 */
         sds ci = catClientInfoString(sdsempty(),c), bytes = sdsempty();
 
         bytes = sdscatrepr(bytes,c->querybuf,64);

@@ -144,11 +144,11 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_METRIC_COUNT 3
 
 /* Protocol and I/O related defines */
-#define REDIS_MAX_QUERYBUF_LEN  (1024*1024*1024) /* 1GB max query buffer. */
+#define REDIS_MAX_QUERYBUF_LEN  (1024*1024*1024) /* 查询缓冲区最大长度（1GB） */
 #define REDIS_IOBUF_LEN         (1024*16)  /* Generic I/O buffer size */
 #define REDIS_REPLY_CHUNK_BYTES (16*1024) /* 16k output buffer */
 #define REDIS_INLINE_MAX_SIZE   (1024*64) /* Max size of inline reads */
-#define REDIS_MBULK_BIG_ARG     (1024*32)
+#define REDIS_MBULK_BIG_ARG     (1024*32) /* 字符串命令的最大长度 32kb */
 #define REDIS_LONGSTR_SIZE      21          /* Bytes needed for long -> str */
 #define REDIS_AOF_AUTOSYNC_BYTES (1024*1024*32) /* fdatasync every 32MB */
 /* When configuring the Redis eventloop, we setup it so that the total number
@@ -257,8 +257,8 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_BLOCKED_WAIT 2    /* WAIT for synchronous replication. */
 
 /* Client request types */
-#define REDIS_REQ_INLINE 1
-#define REDIS_REQ_MULTIBULK 2
+#define REDIS_REQ_INLINE 1      /* 简单的字符串格式请求，如：PING */
+#define REDIS_REQ_MULTIBULK 2   /* 字符串数组格式，如 SET k v */
 
 /* Client classes for client limits, currently used only for
  * the max-client-output-buffer limit implementation. */
@@ -269,7 +269,7 @@ typedef long long mstime_t; /* millisecond time type. */
 
 /* Slave replication state. Used in server.repl_state for slaves to remember
  * what to do next. */
-#define REDIS_REPL_NONE 0 /* No active replication */
+#define REDIS_REPL_NONE 0       /* 复制状态-无 */
 #define REDIS_REPL_CONNECT 1 /* Must connect to master */
 #define REDIS_REPL_CONNECTING 2 /* Connecting to master */
 /* --- Handshake states, must be ordered --- */
@@ -424,12 +424,12 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_LRU_BITS 24
 #define REDIS_LRU_CLOCK_MAX ((1<<REDIS_LRU_BITS)-1) /* Max value of obj->lru */
 #define REDIS_LRU_CLOCK_RESOLUTION 1000 /* 缓存淘汰周期（ms） */
-typedef struct redisObject { // redis基本数据对象
-    unsigned type:4;             // 数据类型;
-    unsigned encoding:4;         // 编码方式;
-    unsigned lru:REDIS_LRU_BITS; // 最后一次被程序访问的时间
-    int refcount;                // 引用计数，用于内存回收
-    void *ptr;                   // 指向底层数据结构的指针
+typedef struct redisObject { /* redis基本数据对象 */
+    unsigned type:4;             /* 数据类型 */
+    unsigned encoding:4;         /* 编码方式 */
+    unsigned lru:REDIS_LRU_BITS; /* 最后一次被程序访问的时间 */
+    int refcount;                /* 引用计数，用于内存回收 */
+    void *ptr;                   /* 指向底层数据结构的指针 */
 } robj;
 
 /* Macro used to obtain the current LRU clock.
@@ -533,24 +533,24 @@ typedef struct redisClient {
     int dictid;
     robj *name;             /* 客户端名字 */
     sds querybuf;           /* 查询缓冲区 */
-    size_t querybuf_peak;   /* Recent (100ms or more) peak of querybuf size */
+    size_t querybuf_peak;   /* 查询缓冲区的尺寸预览 */
     int argc;                           /* argv的长度 */
     robj **argv;                        /* 要执行的命令(argv[0])及参数 */
     struct redisCommand *cmd, *lastcmd; /* 当前要执行的命令，最后一条要执行的命令 */
-    int reqtype;
-    int multibulklen;       /* number of multi bulk arguments left to read */
-    long bulklen;           /* length of bulk argument in multi bulk request */
-    list *reply;            /* 可变大小缓冲区(buf空间用完就用这个) */
-    unsigned long reply_bytes; /* Tot bytes of objects in reply list */
-    int sentlen;            /* Amount of bytes already sent in the current
-                               buffer or object being sent. */
+    int reqtype;                /* 请求的命令类型：单字符串(line)/字符串数组(multi bulk) */
+    int multibulklen;           /* 字符串命令数组长度 */
+    long bulklen;               /* 字符串命令长度 */
+    list *reply;                /* 可变大小缓冲区(buf空间用完就用这个) */
+    unsigned long reply_bytes;  /* 回复的数据总量 */
+    int sentlen;                /* 发送的数据总量 */
+
     time_t ctime;           /* 创建时间 */
     time_t lastinteraction; /* 与服务端最后一次通信的时间 */
     time_t obuf_soft_limit_reached_time; /* 输出缓冲区大小超出软性限制的时间 */
     int flags;              /* 客户端角色标示：REDIS_SLAVE | REDIS_MONITOR | REDIS_MULTI ... */
     int authenticated;      /* 身份验证标示，0:未通过身份验证，1:已经通过了身份验证 */
-    int replstate;          /* replication state if this is a slave */
-    int repl_put_online_on_ack; /* Install slave write handler on ACK. */
+    int replstate;          /* 复制状态 */
+    int repl_put_online_on_ack; /* 以进入REDIS_REPL_ONLINE状态，并设置回调函数*/
     int repldbfd;           /* replication DB file descriptor */
     off_t repldboff;        /* replication DB file offset */
     off_t repldbsize;       /* replication DB file size */
@@ -747,7 +747,7 @@ struct redisServer {
     int maxidletime;                /* Client timeout in seconds */
     int tcpkeepalive;               /* Set SO_KEEPALIVE if non-zero. */
     int active_expire_enabled;      /* Can be disabled for testing purposes. */
-    size_t client_max_querybuf_len; /* Limit for client query buffer length */
+    size_t client_max_querybuf_len; /* 客户端查询缓冲区最大长度(默认1GB) */
     int dbnum;                      /* 数据库个数，默认16个 */
     int daemonize;                  /* True if running as a daemon */
     clientBufferLimitsConfig client_obuf_limits[REDIS_CLIENT_TYPE_COUNT];
@@ -938,14 +938,14 @@ struct redisCommand { /*Redis命令*/
     int arity;              /* 命令参数的个数 */
     char *sflags;           /* 命令属性() */
     int flags;              /* 对sflags进行分析得到的二进制标识 */
-    /* Use a function to determine keys arguments in a command line.
-     * Used for Redis Cluster redirect. */
-    redisGetKeysProc *getkeys_proc;
-    /* What keys should be loaded in background when calling this command? */
-    int firstkey; /* The first argument that's a key (0 = no keys) */
-    int lastkey;  /* The last argument that's a key */
-    int keystep;  /* The step between first and last key */
-    long long microseconds, calls; /* 执行这个命令所耗费的总时长，这个命令的执行次数 */
+
+
+    redisGetKeysProc *getkeys_proc; /* 从命令行中获取key参数的函数 */
+
+    int firstkey;                   /* 第一个key的位置（0表示没有key）*/
+    int lastkey;                    /* 最后一个key的位置，（可以为负数，为正数第argc+lastkey个） */
+    int keystep;                    /* 第一个key到最后一个key的跨度 */
+    long long microseconds, calls;  /* 执行这个命令所耗费的总时长，这个命令的执行次数 */
 };
 
 struct redisFunctionSym {

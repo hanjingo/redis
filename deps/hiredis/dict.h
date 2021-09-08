@@ -41,11 +41,11 @@
 
 /* Unused arguments generate annoying warnings... */
 #define DICT_NOTUSED(V) ((void) V)
-
-typedef struct dictEntry { // 字典条目
-    void *key;              // 键
-    void *val;              // 值
-    struct dictEntry *next; // 指向下一个条目
+/* 字典条目 */
+typedef struct dictEntry {
+    void *key;              /* 键 */
+    void *val;              /* 值 */
+    struct dictEntry *next; /* 指向下一个条目 */
 } dictEntry;
 
 typedef struct dictType {
@@ -56,14 +56,14 @@ typedef struct dictType {
     void (*keyDestructor)(void *privdata, void *key);
     void (*valDestructor)(void *privdata, void *obj);
 } dictType;
-
+/* 字典 */
 typedef struct dict {
     dictEntry **table;
-    dictType *type;
+    dictType *type; /* 字典类型以及字典对应的特定操作函数 */
     unsigned long size;
     unsigned long sizemask;
     unsigned long used;
-    void *privdata;
+    void *privdata; /* 与type配合的上下文数据 */
 } dict;
 
 typedef struct dictIterator {

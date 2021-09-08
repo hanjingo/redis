@@ -984,8 +984,8 @@ void persistCommand(redisClient *c) {
  * API to get key arguments from commands
  * ---------------------------------------------------------------------------*/
 
-/* The base case is to use the keys position as given in the command table
- * (firstkey, lastkey, step). */
+/** @brief 解析命令中的key，并返回key的位置和key的数量
+ * @param cmd 命令行 @param argv 额外参数 @param argc 额外参数的个数 @param numkeys 用于返回key的数量 @param 返回值 key数组：k:索引,v:位置*/
 int *getKeysUsingCommandTable(struct redisCommand *cmd,robj **argv, int argc, int *numkeys) {
     int j, i = 0, last, *keys;
     REDIS_NOTUSED(argv);
