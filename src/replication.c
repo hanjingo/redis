@@ -44,10 +44,10 @@ void putSlaveOnline(redisClient *slave);
 
 /* --------------------------- Utility functions ---------------------------- */
 
-/* Return the pointer to a string representing the slave ip:listening_port
- * pair. Mostly useful for logging, since we want to log a slave using its
- * IP address and it's listening port which is more clear for the user, for
- * example: "Closing connection with slave 10.1.2.3:6380". */
+
+
+
+/* 返回slave服务器的 ip:端口 */
 char *replicationGetSlaveName(redisClient *c) {
     static char buf[REDIS_PEER_ID_LEN];
     char ip[REDIS_IP_STR_LEN];
@@ -67,7 +67,7 @@ char *replicationGetSlaveName(redisClient *c) {
 }
 
 /* ---------------------------------- MASTER -------------------------------- */
-
+/* 创建复制积压缓冲区 */
 void createReplicationBacklog(void) {
     redisAssert(server.repl_backlog == NULL);
     server.repl_backlog = zmalloc(server.repl_backlog_size);
@@ -118,31 +118,31 @@ void freeReplicationBacklog(void) {
     server.repl_backlog = NULL;
 }
 
-/* Add data to the replication backlog.
- * This function also increments the global replication offset stored at
- * server.master_repl_offset, because there is no case where we want to feed
- * the backlog without incrementing the buffer. */
+/**
+ * @brief 向复制积压缓冲区添加数据
+ * @param ptr 数据指针
+ * @param len 数据长度*/
 void feedReplicationBacklog(void *ptr, size_t len) {
     unsigned char *p = ptr;
 
     server.master_repl_offset += len;
 
-    /* This is a circular buffer, so write as much data we can at every
-     * iteration and rewind the "idx" index if we reach the limit. */
+    /* 环形队列不存在溢出问题 
+     * 当空间不够时，就从头开始写，使用最新数据覆盖最老数据*/
     while(len) {
-        size_t thislen = server.repl_backlog_size - server.repl_backlog_idx;
-        if (thislen > len) thislen = len;
+        size_t thislen = server.repl_backlog_size - server.repl_backlog_idx;    /*计算缓冲区可用大小*/
+        if (thislen > len) thislen = len;                                       /*容量足够*/
         memcpy(server.repl_backlog+server.repl_backlog_idx,p,thislen);
-        server.repl_backlog_idx += thislen;
-        if (server.repl_backlog_idx == server.repl_backlog_size)
+        server.repl_backlog_idx += thislen;                                     /*写起点后挪*/
+        if (server.repl_backlog_idx == server.repl_backlog_size)                /*达到终点时，跳回位置0*/
             server.repl_backlog_idx = 0;
         len -= thislen;
         p += thislen;
-        server.repl_backlog_histlen += thislen;
+        server.repl_backlog_histlen += thislen;                                 /*记录已用数据大小*/
     }
-    if (server.repl_backlog_histlen > server.repl_backlog_size)
+    if (server.repl_backlog_histlen > server.repl_backlog_size) /*已用数据超量时修正*/
         server.repl_backlog_histlen = server.repl_backlog_size;
-    /* Set the offset of the first byte we have in the backlog. */
+    /* 设置读起点 */
     server.repl_backlog_off = server.master_repl_offset -
                               server.repl_backlog_histlen + 1;
 }
@@ -298,14 +298,14 @@ void replicationFeedMonitors(redisClient *c, list *monitors, int dictid, robj **
     decrRefCount(cmdobj);
 }
 
-/* Feed the slave 'c' with the replication backlog starting from the
- * specified 'offset' up to the end of the backlog. */
+/** @brief 从repl_backlog取数据发送给salve
+ * @param c Redis客户端 @param offset 偏移量 */
 long long addReplyReplicationBacklog(redisClient *c, long long offset) {
     long long j, skip, len;
 
     redisLog(REDIS_DEBUG, "[PSYNC] Slave request offset: %lld", offset);
 
-    if (server.repl_backlog_histlen == 0) {
+    if (server.repl_backlog_histlen == 0) { /*无可用数据*/
         redisLog(REDIS_DEBUG, "[PSYNC] Backlog history len is zero");
         return 0;
     }
@@ -319,12 +319,12 @@ long long addReplyReplicationBacklog(redisClient *c, long long offset) {
     redisLog(REDIS_DEBUG, "[PSYNC] Current index: %lld",
              server.repl_backlog_idx);
 
-    /* Compute the amount of bytes we need to discard. */
+    /* 计算需要跳过的长度 */
     skip = offset - server.repl_backlog_off;
     redisLog(REDIS_DEBUG, "[PSYNC] Skipping: %lld", skip);
 
-    /* Point j to the oldest byte, that is actaully our
-     * server.repl_backlog_off byte. */
+
+    /* 计算真正的读起点 */
     j = (server.repl_backlog_idx +
         (server.repl_backlog_size-server.repl_backlog_histlen)) %
         server.repl_backlog_size;
@@ -335,7 +335,7 @@ long long addReplyReplicationBacklog(redisClient *c, long long offset) {
 
     /* Feed slave with data. Since it is a circular buffer we have to
      * split the reply in two parts if we are cross-boundary. */
-    len = server.repl_backlog_histlen - skip;
+    len = server.repl_backlog_histlen - skip; /*计算需要发送的长度*/
     redisLog(REDIS_DEBUG, "[PSYNC] Reply total length: %lld", len);
     while(len) {
         long long thislen =
@@ -402,11 +402,11 @@ int replicationSetupSlaveForFullResync(redisClient *slave, long long offset) {
     return REDIS_OK;
 }
 
-/* This function handles the PSYNC command from the point of view of a
- * master receiving a request for partial resynchronization.
- *
- * On success return REDIS_OK, otherwise REDIS_ERR is returned and we proceed
- * with the usual full resync. */
+
+
+
+
+/* 部分重同步数据 */
 int masterTryPartialResynchronization(redisClient *c) {
     long long psync_offset, psync_len;
     char *master_runid = c->argv[1]->ptr;
@@ -554,13 +554,13 @@ int startBgsaveForReplication(int mincapa) {
     return retval;
 }
 
-/* SYNC and PSYNC command implemenation. */
+/* SYNC/PSYNC 命令的实现 */
 void syncCommand(redisClient *c) {
     /* ignore SYNC if already slave or in monitor mode */
     if (c->flags & REDIS_SLAVE) return;
 
-    /* Refuse SYNC requests if we are a slave but the link with our master
-     * is not ok... */
+
+    /* 连接未建立，拒绝SYNC请求*/
     if (server.masterhost && server.repl_state != REDIS_REPL_CONNECTED) {
         addReplyError(c,"Can't SYNC while not connected with my master");
         return;
@@ -570,13 +570,13 @@ void syncCommand(redisClient *c) {
      * the client about already issued commands. We need a fresh reply
      * buffer registering the differences between the BGSAVE and the current
      * dataset, so that we can copy to other slaves if needed. */
-    if (listLength(c->reply) != 0 || c->bufpos != 0) {
+    if (listLength(c->reply) != 0 || c->bufpos != 0) { /*有数据未发送完，拒绝SYNC请求*/
         addReplyError(c,"SYNC and PSYNC are invalid with pending output");
         return;
     }
 
     redisLog(REDIS_NOTICE,"Slave %s asks for synchronization",
-        replicationGetSlaveName(c));
+        replicationGetSlaveName(c)); /* 打一条日志 */
 
     /* Try a partial resynchronization if this is a PSYNC command.
      * If it fails, we continue with usual full resynchronization, however
@@ -619,7 +619,7 @@ void syncCommand(redisClient *c) {
     c->flags |= REDIS_SLAVE;
     listAddNodeTail(server.slaves,c);
 
-    /* CASE 1: BGSAVE is in progress, with disk target. */
+    /* CASE 1: BGSAVE命令在执行中且RDB保存到磁盘 */
     if (server.rdb_child_pid != -1 &&
         server.rdb_child_type == REDIS_RDB_CHILD_TYPE_DISK)
     {
@@ -709,7 +709,7 @@ void replconfCommand(redisClient *c) {
             if ((getLongFromObjectOrReply(c,c->argv[j+1],
                     &port,NULL) != REDIS_OK))
                 return;
-            c->slave_listening_port = port;
+            c->slave_listening_port = port; /* 设置slave的端口信息 */
         } else if (!strcasecmp(c->argv[j]->ptr,"capa")) {
             /* Ignore capabilities not understood by this master. */
             if (!strcasecmp(c->argv[j+1]->ptr,"eof"))
@@ -1662,7 +1662,7 @@ int cancelReplicationHandshake(void) {
     return 1;
 }
 
-/* Set replication to the specified master address and port. */
+/* 设置master服务器地址信息 */
 void replicationSetMaster(char *ip, int port) {
     sdsfree(server.masterhost);
     server.masterhost = sdsnew(ip);
@@ -1709,7 +1709,7 @@ void replicationHandleMasterDisconnection(void) {
      * maybe we'll be able to PSYNC with our master later. We'll disconnect
      * the slaves only if we'll have to do a full resync with our master. */
 }
-
+/* SLAVEOF命令的实现 */
 void slaveofCommand(redisClient *c) {
     /* SLAVEOF is not allowed in cluster mode as replication is automatically
      * configured using the current address of the master node. */
@@ -1744,7 +1744,7 @@ void slaveofCommand(redisClient *c) {
         }
         /* There was no previous master or the user specified a different one,
          * we can continue. */
-        replicationSetMaster(c->argv[1]->ptr, port);
+        replicationSetMaster(c->argv[1]->ptr, port); /* 设置主服务器地址 */
         sds client = catClientInfoString(sdsempty(),c);
         redisLog(REDIS_NOTICE,"SLAVE OF %s:%d enabled (user request from '%s')",
             server.masterhost, server.masterport, client);

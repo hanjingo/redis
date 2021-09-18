@@ -71,7 +71,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_DEFAULT_HZ        10      /* Time interrupt calls/sec. */
 #define REDIS_MIN_HZ            1
 #define REDIS_MAX_HZ            500
-#define REDIS_SERVERPORT        6379    /* TCP port */
+#define REDIS_SERVERPORT        6379    /* 默认TCP端口 */
 #define REDIS_TCP_BACKLOG       511     /* TCP listen backlog */
 #define REDIS_MAXIDLETIME       0       /* default client timeout: infinite */
 #define REDIS_DEFAULT_DBNUM     16
@@ -92,10 +92,10 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_DEFAULT_SLAVE_PRIORITY 100
 #define REDIS_REPL_TIMEOUT 60
 #define REDIS_REPL_PING_SLAVE_PERIOD 10
-#define REDIS_RUN_ID_SIZE 40
+#define REDIS_RUN_ID_SIZE 40 /* 运行ID的字符串长度 */
 #define REDIS_EOF_MARK_SIZE 40
 #define REDIS_DEFAULT_REPL_BACKLOG_SIZE (1024*1024)    /* 1mb */
-#define REDIS_DEFAULT_REPL_BACKLOG_TIME_LIMIT (60*60)  /* 1 hour */
+#define REDIS_DEFAULT_REPL_BACKLOG_TIME_LIMIT (60*60)  /* 复制积压缓冲区超时时长(1小时，单位：s) */
 #define REDIS_REPL_BACKLOG_MIN_SIZE (1024*16)          /* 16k */
 #define REDIS_BGSAVE_RETRY_DELAY 5 /* Wait a few secs before trying again. */
 #define REDIS_DEFAULT_PID_FILE "/var/run/redis.pid"
@@ -125,7 +125,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_DEFAULT_MIN_SLAVES_TO_WRITE 0
 #define REDIS_DEFAULT_MIN_SLAVES_MAX_LAG 10
 #define REDIS_IP_STR_LEN 46 /* INET6_ADDRSTRLEN is 46, but we need to be sure */
-#define REDIS_PEER_ID_LEN (REDIS_IP_STR_LEN+32) /* Must be enough for ip:port */
+#define REDIS_PEER_ID_LEN (REDIS_IP_STR_LEN+32) /* 节点ID(IP:端口)的长度 */
 #define REDIS_BINDADDR_MAX 16
 #define REDIS_MIN_RESERVED_FDS 32
 #define REDIS_DEFAULT_LATENCY_MONITOR_THRESHOLD 0
@@ -551,9 +551,9 @@ typedef struct redisClient {
     int authenticated;      /* 身份验证标示，0:未通过身份验证，1:已经通过了身份验证 */
     int replstate;          /* 复制状态 */
     int repl_put_online_on_ack; /* 以进入REDIS_REPL_ONLINE状态，并设置回调函数*/
-    int repldbfd;           /* replication DB file descriptor */
-    off_t repldboff;        /* replication DB file offset */
-    off_t repldbsize;       /* replication DB file size */
+    int repldbfd;           /* 复制数据库文件描述符 */
+    off_t repldboff;        /* 复制数据库文件偏移量 */
+    off_t repldbsize;       /* 复制的数据库文件大小 */
     sds replpreamble;       /* replication DB preamble. */
     long long reploff;      /* replication offset if this is our master */
     long long repl_ack_off; /* replication ack offset, if this is a slave */
@@ -600,24 +600,24 @@ struct sharedObjectsStruct {
 
 /* 跳表节点 */
 typedef struct zskiplistNode {
-    robj *obj;                          // 成员对象
-    double score;                       // 分值
-    struct zskiplistNode *backward;     // 后退指针（方向表头，指向上一个节点）,步进单位1步
+    robj *obj;                          /* 成员对象 */
+    double score;                       /* 分值 */
+    struct zskiplistNode *backward;     /* 后退指针（方向表头，指向上一个节点）,步进单位1步 */
     struct zskiplistLevel {
-        struct zskiplistNode *forward;  // 前进指针（方向表尾），步进单位>=1步
-        unsigned int span;              // 前进指针和当前节点的距离，用来排位
-    } level[];                          // 层高，随机[1,32]
+        struct zskiplistNode *forward;  /* 前进指针（方向表尾），步进单位>=1步 */
+        unsigned int span;              /* 前进指针和当前节点的距离，用来排位 */
+    } level[];                          /* 层高，随机[1,32] */
 } zskiplistNode;
 /* 跳表 */
 typedef struct zskiplist {
-    struct zskiplistNode *header, *tail; // 表头，表尾
-    unsigned long length;                // 节点数量（不算表头）
-    int level;                           // 最大层级
+    struct zskiplistNode *header, *tail; /* 表头，表尾 */
+    unsigned long length;                /* 节点数量（不算表头） */
+    int level;                           /* 最大层级 */
 } zskiplist;
 
 typedef struct zset {
-    dict *dict;     // 字典
-    zskiplist *zsl; // 跳表
+    dict *dict;     /* 字典 */
+    zskiplist *zsl; /* 跳表 */
 } zset;
 
 typedef struct clientBufferLimitsConfig {
@@ -815,24 +815,24 @@ struct redisServer {
     int slaveseldb;                 /* Last SELECTed DB in replication output */
     long long master_repl_offset;   /* Global replication offset */
     int repl_ping_slave_period;     /* Master pings the slave every N seconds */
-    char *repl_backlog;             /* Replication backlog for partial syncs */
-    long long repl_backlog_size;    /* Backlog circular buffer size */
-    long long repl_backlog_histlen; /* Backlog actual data length */
-    long long repl_backlog_idx;     /* Backlog circular buffer current offset */
-    long long repl_backlog_off;     /* Replication offset of first byte in the
-                                       backlog buffer. */
-    time_t repl_backlog_time_limit; /* Time without slaves after the backlog
-                                       gets released. */
-    time_t repl_no_slaves_since;    /* We have no slaves since that time.
-                                       Only valid if server.slaves len is 0. */
-    int repl_min_slaves_to_write;   /* Min number of slaves to write. */
-    int repl_min_slaves_max_lag;    /* Max lag of <count> slaves to write. */
-    int repl_good_slaves_count;     /* Number of slaves with lag <= max_lag. */
-    int repl_diskless_sync;         /* Send RDB to slaves sockets directly. */
-    int repl_diskless_sync_delay;   /* Delay to start a diskless repl BGSAVE. */
+    char *repl_backlog;             /* 复制积压缓冲区(环形) */
+    long long repl_backlog_size;    /* 复制积压缓冲区容量 */
+    long long repl_backlog_histlen; /* 复制积压缓冲区已用长度 */
+    long long repl_backlog_idx;     /* 复制积压缓冲区写操作起点 */
+    long long repl_backlog_off;     /* 复制积压缓冲区读操作起点 */
+
+    time_t repl_backlog_time_limit; /* 所有slave断线后复制积压缓冲区的生存时长 */
+
+    time_t repl_no_slaves_since;    /* 所有slave不可用的开始时间 */
+
+    int repl_min_slaves_to_write;   /* slave的最少数量要求（防止master在不安全的情况下执行写命令） */
+    int repl_min_slaves_max_lag;    /* slave的最大延迟（防止master在不安全的情况下执行写命令） */
+    int repl_good_slaves_count;     /* 延迟小于repl_min_slaves_max_lag的slave数量 */
+    int repl_diskless_sync;         /* 无盘复制RDB(全量复制) */
+    int repl_diskless_sync_delay;   /* 无盘复制时延迟指定时长 */
     /* Replication (slave) */
     char *masterauth;               /* AUTH with this password with master */
-    char *masterhost;               /* master服务器的地址 */
+    char *masterhost;               /* master服务器的IP */
     int masterport;                 /* master服务器的端口 */
     int repl_timeout;               /* Timeout after N seconds of master idle */
     redisClient *master;     /* Client that is master for this slave */
@@ -887,8 +887,8 @@ struct redisServer {
     time_t unixtime;        /* 每次serverCron循环时的时间样本 */
     long long mstime;       /* 每次serverCron循环时的时间样本(ms) */
     /* Pubsub */
-    dict *pubsub_channels;  /* 订阅的客户端字典：key:频道，value:客户端列表 */
-    list *pubsub_patterns;  /* 订阅关系列表 */
+    dict *pubsub_channels;      /* 订阅的客户端字典：key:频道，value:客户端列表 */
+    list *pubsub_patterns;      /* 订阅关系列表 */
     int notify_keyspace_events; /* 数据库通知选项 */
  
     /* Cluster */
