@@ -36,13 +36,13 @@
 
 struct clusterNode;
 
-/* clusterLink encapsulates everything needed to talk with a remote node. */
+/* 连接节点所需的有关信息 */
 typedef struct clusterLink {
-    mstime_t ctime;             /* Link creation time */
-    int fd;                     /* TCP socket file descriptor */
-    sds sndbuf;                 /* Packet send buffer */
-    sds rcvbuf;                 /* Packet reception buffer */
-    struct clusterNode *node;   /* Node related to this link if any, or NULL */
+    mstime_t ctime;             /* 连接创建的时间 */
+    int fd;                     /* 套接字描述符 */
+    sds sndbuf;                 /* 输出缓冲区 */
+    sds rcvbuf;                 /* 输入缓冲区 */
+    struct clusterNode *node;   /* 与这个连接相关联的节点，如果没有就为NULL */
 } clusterLink;
 
 /* Cluster node flags and macros. */
@@ -78,12 +78,12 @@ typedef struct clusterNodeFailReport {
     struct clusterNode *node;  /* Node reporting the failure condition. */
     mstime_t time;             /* Time of the last report from this node. */
 } clusterNodeFailReport;
-
+/* 集群节点 */
 typedef struct clusterNode {
-    mstime_t ctime; /* Node object creation time. */
-    char name[REDIS_CLUSTER_NAMELEN]; /* Node name, hex string, sha1-size */
-    int flags;      /* REDIS_NODE_... */
-    uint64_t configEpoch; /* Last configEpoch observed for this node */
+    mstime_t ctime;                     /* 节点创建时间 */
+    char name[REDIS_CLUSTER_NAMELEN];   /* 节点名字（由40个十六进制字符组成） */
+    int flags;                          /* 节点标识（标记节点的角色和状态） */
+    uint64_t configEpoch;               /* 当前的配置纪元（用于故障转移） */
     unsigned char slots[REDIS_CLUSTER_SLOTS/8]; /* slots handled by this node */
     int numslots;   /* Number of slots handled by this node */
     int numslaves;  /* Number of slave nodes, if this is a master */
@@ -99,18 +99,18 @@ typedef struct clusterNode {
     mstime_t repl_offset_time;  /* Unix time we received offset for this node */
     mstime_t orphaned_time;     /* Starting time of orphaned master condition */
     long long repl_offset;      /* Last known repl offset for this node. */
-    char ip[REDIS_IP_STR_LEN];  /* Latest known IP address of this node */
-    int port;                   /* Latest known port of this node */
-    clusterLink *link;          /* TCP/IP link with this node */
+    char ip[REDIS_IP_STR_LEN];  /* 节点IP */
+    int port;                   /* 节点端口 */
+    clusterLink *link;          /* 保存连接节点所需的有关信息 */
     list *fail_reports;         /* List of nodes signaling this as failing */
 } clusterNode;
-
+/* 当前节点所在的集群状态 */
 typedef struct clusterState {
-    clusterNode *myself;  /* This node */
-    uint64_t currentEpoch;
-    int state;            /* REDIS_CLUSTER_OK, REDIS_CLUSTER_FAIL, ... */
-    int size;             /* Num of master nodes with at least one slot */
-    dict *nodes;          /* Hash table of name -> clusterNode structures */
+    clusterNode *myself;    /* 本节点 */
+    uint64_t currentEpoch;  /* 集群当钱的配置纪元（用于故障转移） */
+    int state;              /* 集群当前的状态（REDIS_CLUSTER_OK, REDIS_CLUSTER_FAIL, ... ）*/
+    int size;               /* 集群中至少处理着一个槽的节点的数量 */
+    dict *nodes;            /* 节点字典：key:节点名字，value:节点 */
     dict *nodes_black_list; /* Nodes we don't re-add for a few seconds. */
     clusterNode *migrating_slots_to[REDIS_CLUSTER_SLOTS];
     clusterNode *importing_slots_from[REDIS_CLUSTER_SLOTS];

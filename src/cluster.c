@@ -643,13 +643,13 @@ unsigned int keyHashSlot(char *key, int keylen) {
  * CLUSTER node API
  * -------------------------------------------------------------------------- */
 
-/* Create a new cluster node, with the specified flags.
- * If "nodename" is NULL this is considered a first handshake and a random
- * node name is assigned to this node (it will be fixed later when we'll
- * receive the first pong).
- *
- * The node is created and returned to the user, but it is not automatically
- * added to the nodes hash table. */
+
+
+/**
+ * @brief 创建集群节点
+ * @param nodename 节点名
+ * @param flags 标记
+ **/
 clusterNode *createClusterNode(char *nodename, int flags) {
     clusterNode *node = zmalloc(sizeof(*node));
 
@@ -840,7 +840,7 @@ void freeClusterNode(clusterNode *n) {
     zfree(n);
 }
 
-/* Add a node to the nodes hash table */
+/** @brief 添加节点 */
 int clusterAddNode(clusterNode *node) {
     int retval;
 
@@ -1209,9 +1209,9 @@ void clearNodeFailureIfNeeded(clusterNode *node) {
     }
 }
 
-/* Return true if we already have a node in HANDSHAKE state matching the
- * specified ip address and port number. This function is used in order to
- * avoid adding a new handshake node for the same address multiple times. */
+/**
+ * @brief 判断节点是不是在握手状态
+ * @param ip IP地址 @param port 端口 */
 int clusterHandshakeInProgress(char *ip, int port) {
     dictIterator *di;
     dictEntry *de;
@@ -1227,19 +1227,19 @@ int clusterHandshakeInProgress(char *ip, int port) {
     return de != NULL;
 }
 
-/* Start an handshake with the specified address if there is not one
- * already in progress. Returns non-zero if the handshake was actually
- * started. On error zero is returned and errno is set to one of the
- * following values:
+/** 
+ * @brief 与一个节点进行握手;
+ * @param ip IP地址
+ * @param port 端口
  *
- * EAGAIN - There is already an handshake in progress for this address.
- * EINVAL - IP or port are not valid. */
+ *
+ **/
 int clusterStartHandshake(char *ip, int port) {
     clusterNode *n;
     char norm_ip[REDIS_IP_STR_LEN];
     struct sockaddr_storage sa;
 
-    /* IP sanity check */
+    /* 检查IP */
     if (inet_pton(AF_INET,ip,
             &(((struct sockaddr_in *)&sa)->sin_addr)))
     {
@@ -1253,7 +1253,7 @@ int clusterStartHandshake(char *ip, int port) {
         return 0;
     }
 
-    /* Port sanity check */
+    /* 检查端口 */
     if (port <= 0 || port > (65535-REDIS_CLUSTER_PORT_INCR)) {
         errno = EINVAL;
         return 0;
@@ -1262,16 +1262,16 @@ int clusterStartHandshake(char *ip, int port) {
     /* Set norm_ip as the normalized string representation of the node
      * IP address. */
     memset(norm_ip,0,REDIS_IP_STR_LEN);
-    if (sa.ss_family == AF_INET)
+    if (sa.ss_family == AF_INET) /* IP4 */
         inet_ntop(AF_INET,
             (void*)&(((struct sockaddr_in *)&sa)->sin_addr),
             norm_ip,REDIS_IP_STR_LEN);
     else
-        inet_ntop(AF_INET6,
+        inet_ntop(AF_INET6, /* IP6 */
             (void*)&(((struct sockaddr_in6 *)&sa)->sin6_addr),
             norm_ip,REDIS_IP_STR_LEN);
 
-    if (clusterHandshakeInProgress(norm_ip,port)) {
+    if (clusterHandshakeInProgress(norm_ip,port)) { /* 已经在握手中，返回EAGAIN错误 */
         errno = EAGAIN;
         return 0;
     }
@@ -3882,7 +3882,7 @@ void clusterCommand(redisClient *c) {
         addReplyError(c,"This instance has cluster support disabled");
         return;
     }
-
+    /* 命令 CLUSTER MEET 的实现 */
     if (!strcasecmp(c->argv[1]->ptr,"meet") && c->argc == 4) {
         long long port;
 
@@ -3891,7 +3891,7 @@ void clusterCommand(redisClient *c) {
                                 (char*)c->argv[3]->ptr);
             return;
         }
-
+        /* 与节点握手 */
         if (clusterStartHandshake(c->argv[2]->ptr,port) == 0 &&
             errno == EINVAL)
         {
