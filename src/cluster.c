@@ -4194,22 +4194,22 @@ void clusterCommand(redisClient *c) {
                              CLUSTER_TODO_SAVE_CONFIG);
         addReply(c,shared.ok);
     } else if (!strcasecmp(c->argv[1]->ptr,"replicate") && c->argc == 3) {
-        /* CLUSTER REPLICATE <NODE ID> */
+        /* 命令 CLUSTER REPLICATE <NODE ID> 的实现（让当前节点成为NODE ID的从节点，并开始对主节点进行复制） */
         clusterNode *n = clusterLookupNode(c->argv[2]->ptr);
 
-        /* Lookup the specified node in our table. */
+        /* 在自己的clusterState.nodes字典中查找 NODE ID对应的节点 */
         if (!n) {
             addReplyErrorFormat(c,"Unknown node %s", (char*)c->argv[2]->ptr);
             return;
         }
 
-        /* I can't replicate myself. */
+        /* 不能复制自己 */
         if (n == myself) {
             addReplyError(c,"Can't replicate myself");
             return;
         }
 
-        /* Can't replicate a slave. */
+        /* 不能复制一个从节点 */
         if (nodeIsSlave(n)) {
             addReplyError(c,"I can only replicate a master, not a slave.");
             return;
@@ -4226,9 +4226,9 @@ void clusterCommand(redisClient *c) {
             return;
         }
 
-        /* Set the master. */
+        /* 设置主节点 */
         clusterSetMaster(n);
-        clusterDoBeforeSleep(CLUSTER_TODO_UPDATE_STATE|CLUSTER_TODO_SAVE_CONFIG);
+        clusterDoBeforeSleep(CLUSTER_TODO_UPDATE_STATE|CLUSTER_TODO_SAVE_CONFIG); /* 设置休眠前要做的工作(更新状态|保存配置) */
         addReply(c,shared.ok);
     } else if (!strcasecmp(c->argv[1]->ptr,"slaves") && c->argc == 3) {
         /* CLUSTER SLAVES <NODE ID> */
