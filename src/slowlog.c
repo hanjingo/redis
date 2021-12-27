@@ -106,15 +106,15 @@ void slowlogInit(void) {
     listSetFreeMethod(server.slowlog,slowlogFreeEntry);
 }
 
-/* Push a new entry into the slow log.
- * This function will make sure to trim the slow log accordingly to the
- * configured max length. */
+/** @brief 将日志推入日志链表
+ *  @param duration 
+ **/
 void slowlogPushEntryIfNeeded(robj **argv, int argc, long long duration) {
-    if (server.slowlog_log_slower_than < 0) return; /* Slowlog disabled */
+    if (server.slowlog_log_slower_than < 0) return; /* 慢日志已关闭 */
     if (duration >= server.slowlog_log_slower_than)
         listAddNodeHead(server.slowlog,slowlogCreateEntry(argv,argc,duration));
 
-    /* Remove old entries if needed. */
+    /* 如果日志数量超额，删除它 */
     while (listLength(server.slowlog) > server.slowlog_max_len)
         listDelNode(server.slowlog,listLast(server.slowlog));
 }
@@ -125,18 +125,18 @@ void slowlogReset(void) {
         listDelNode(server.slowlog,listLast(server.slowlog));
 }
 
-/* The SLOWLOG command. Implements all the subcommands needed to handle the
- * Redis slow log. */
+/** @brief 命令:slowlog 
+ *  */
 void slowlogCommand(redisClient *c) {
-    if (c->argc == 2 && !strcasecmp(c->argv[1]->ptr,"reset")) {
+    if (c->argc == 2 && !strcasecmp(c->argv[1]->ptr,"reset")) { /* slowlog reset 重置日志 */
         slowlogReset();
         addReply(c,shared.ok);
-    } else if (c->argc == 2 && !strcasecmp(c->argv[1]->ptr,"len")) {
+    } else if (c->argc == 2 && !strcasecmp(c->argv[1]->ptr,"len")) { /* slowlog len 获得日志长度 */
         addReplyLongLong(c,listLength(server.slowlog));
     } else if ((c->argc == 2 || c->argc == 3) &&
-               !strcasecmp(c->argv[1]->ptr,"get"))
+               !strcasecmp(c->argv[1]->ptr,"get")) /* slowlog get 获取日志 */
     {
-        long count = 10, sent = 0;
+        long count = 10, sent = 0; /* 默认查询10（值可以通过参数指定） */
         listIter li;
         void *totentries;
         listNode *ln;
@@ -146,9 +146,9 @@ void slowlogCommand(redisClient *c) {
             getLongFromObjectOrReply(c,c->argv[2],&count,NULL) != REDIS_OK)
             return;
 
-        listRewind(server.slowlog,&li);
+        listRewind(server.slowlog,&li); /* 获取迭代器 */
         totentries = addDeferredMultiBulkLength(c);
-        while(count-- && (ln = listNext(&li))) {
+        while(count-- && (ln = listNext(&li))) { /* 遍历日志list */
             int j;
 
             se = ln->value;

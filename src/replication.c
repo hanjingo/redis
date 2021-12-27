@@ -258,7 +258,7 @@ void replicationFeedSlaves(list *slaves, int dictid, robj **argv, int argc) {
             addReplyBulk(slave,argv[j]);
     }
 }
-
+/** @brief 向监视器发送命令记录信息； @param c 客户端 @param monitors 监视器 @param dictid 字典ID @param argv 参数列表 @param argc 参数数量*/
 void replicationFeedMonitors(redisClient *c, list *monitors, int dictid, robj **argv, int argc) {
     listNode *ln;
     listIter li;
@@ -293,7 +293,7 @@ void replicationFeedMonitors(redisClient *c, list *monitors, int dictid, robj **
     listRewind(monitors,&li);
     while((ln = listNext(&li))) {
         redisClient *monitor = ln->value;
-        addReply(monitor,cmdobj);
+        addReply(monitor,cmdobj); /* 发送回复 */
     }
     decrRefCount(cmdobj);
 }

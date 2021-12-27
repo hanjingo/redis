@@ -3071,13 +3071,13 @@ void infoCommand(redisClient *c) {
     addReplySds(c,info);
     addReply(c,shared.crlf);
 }
-
+/** @brief 命令: monitor */
 void monitorCommand(redisClient *c) {
     /* ignore MONITOR if already slave or in monitor mode */
-    if (c->flags & REDIS_SLAVE) return;
+    if (c->flags & REDIS_SLAVE) return; /* slave不允许称为监视器 */
 
     c->flags |= (REDIS_SLAVE|REDIS_MONITOR);
-    listAddNodeTail(server.monitors,c);
+    listAddNodeTail(server.monitors,c); /* 添加到监视器链表 */
     addReply(c,shared.ok);
 }
 

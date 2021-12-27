@@ -90,12 +90,12 @@ void setGenericCommand(redisClient *c, int flags, robj *key, robj *val, robj *ex
     addReply(c, ok_reply ? ok_reply : shared.ok);
 }
 
-/* SET key value [NX] [XX] [EX <seconds>] [PX <milliseconds>] */
+/** @brief 命令：set入口; SET key value [NX] [XX] [EX <seconds>] [PX <milliseconds>] */
 void setCommand(redisClient *c) {
     int j;
     robj *expire = NULL;
     int unit = UNIT_SECONDS;
-    int flags = REDIS_SET_NO_FLAGS;
+    int flags = REDIS_SET_NO_FLAGS; /* 清空标记 */
 
     for (j = 3; j < c->argc; j++) {
         char *a = c->argv[j]->ptr;
@@ -141,7 +141,7 @@ void psetexCommand(redisClient *c) {
     c->argv[3] = tryObjectEncoding(c->argv[3]);
     setGenericCommand(c,REDIS_SET_NO_FLAGS,c->argv[1],c->argv[3],c->argv[2],UNIT_MILLISECONDS,NULL,NULL);
 }
-
+/** @brief 命令：get */
 int getGenericCommand(redisClient *c) {
     robj *o;
 
@@ -156,7 +156,7 @@ int getGenericCommand(redisClient *c) {
         return REDIS_OK;
     }
 }
-
+/** @brief 命令：get入口 */
 void getCommand(redisClient *c) {
     getGenericCommand(c);
 }

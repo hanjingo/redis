@@ -362,7 +362,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_LUA_TIME_LIMIT 5000 /* milliseconds */
 
 /* Units */
-#define UNIT_SECONDS 0
+#define UNIT_SECONDS 0 /* 秒数 */
 #define UNIT_MILLISECONDS 1
 
 /* SHUTDOWN flags */
@@ -470,7 +470,7 @@ typedef struct redisDb {
     dict *expires;              /* 键的过期字典，key：键(指针)，value：过期时间(long long) */
     dict *blocking_keys;        /* Keys with clients waiting for data (BLPOP) */
     dict *ready_keys;           /* Blocked keys that received a PUSH */
-    dict *watched_keys;         /* WATCHED keys for MULTI/EXEC CAS */
+    dict *watched_keys;         /* 正在被WATCH命令监视的键 */
     struct evictionPoolEntry *eviction_pool;    /* Eviction pool of keys */
     int id;                     /* Database ID */
     long long avg_ttl;          /* 平均的TTL时间 */
@@ -478,15 +478,15 @@ typedef struct redisDb {
 
 /* Client MULTI/EXEC state */
 typedef struct multiCmd {
-    robj **argv;
-    int argc;
-    struct redisCommand *cmd;
+    robj **argv;              /* 参数 */
+    int argc;                 /* 参数数量 */
+    struct redisCommand *cmd; /* 命令指针 */
 } multiCmd;
 
 typedef struct multiState {
-    multiCmd *commands;     /* Array of MULTI commands */
-    int count;              /* Total number of MULTI commands */
-    int minreplicas;        /* MINREPLICAS for synchronous replication */
+    multiCmd *commands;         /* 事务队列，FIFO顺序 */
+    int count;                  /* 已入队命令计数 */
+    int minreplicas;            /* MINREPLICAS for synchronous replication */
     time_t minreplicas_timeout; /* MINREPLICAS timeout as unixtime. */
 } multiState;
 
@@ -564,7 +564,7 @@ typedef struct redisClient {
     char replrunid[REDIS_RUN_ID_SIZE+1]; /* master run id if this is a master */
     int slave_listening_port; /* 从服务器的监听端口 */
     int slave_capa;         /* Slave capabilities: SLAVE_CAPA_* bitwise OR. */
-    multiState mstate;      /* MULTI/EXEC state */
+    multiState mstate;      /* 事务状态 */
     int btype;              /* Type of blocking op if REDIS_BLOCKED. */
     blockingState bpop;     /* blocking state */
     long long woff;         /* Last write global replication offset. */
@@ -718,8 +718,8 @@ struct redisServer {
     long long stat_numconnections;  /* Number of connections received */
     long long stat_expiredkeys;     /* 过期键的数量 */
     long long stat_evictedkeys;     /* Number of evicted keys (maxmemory) */
-    long long stat_keyspace_hits;   /* Number of successful lookups of keys */
-    long long stat_keyspace_misses; /* Number of failed lookups of keys */
+    long long stat_keyspace_hits;   /* key查找命中数量 */
+    long long stat_keyspace_misses; /* key查找未命中数量 */
     size_t stat_peak_memory;        /* 内存使用峰值 */
     long long stat_fork_time;       /* Time needed to perform latest fork() */
     double stat_fork_rate;          /* Fork rate in GB/sec. */
@@ -727,10 +727,10 @@ struct redisServer {
     long long stat_sync_full;       /* Number of full resyncs with slaves. */
     long long stat_sync_partial_ok; /* Number of accepted PSYNC requests. */
     long long stat_sync_partial_err;/* Number of unaccepted PSYNC requests. */
-    list *slowlog;                  /* SLOWLOG list of commands */
-    long long slowlog_entry_id;     /* SLOWLOG current entry ID */
-    long long slowlog_log_slower_than; /* SLOWLOG time limit (to get logged) */
-    unsigned long slowlog_max_len;     /* SLOWLOG max number of items logged */
+    list *slowlog;                  /* 慢查询日志列表 */
+    long long slowlog_entry_id;     /* 下一条慢查询日志ID */
+    long long slowlog_log_slower_than; /* 执行时间超过此值的命令会被记录到日志（配置选项slowlog-log-slower-than）*/
+    unsigned long slowlog_max_len;     /* 日志的最大条数，日志先进先出（配置选项slowlog-max-len） */
     size_t resident_set_size;       /* RSS sampled in serverCron(). */
     long long stat_net_input_bytes; /* Bytes read from network. */
     long long stat_net_output_bytes; /* Bytes written to network. */
@@ -854,7 +854,7 @@ struct redisServer {
     char repl_master_runid[REDIS_RUN_ID_SIZE+1];  /* Master run id for PSYNC. */
     long long repl_master_initial_offset;         /* Master PSYNC offset. */
     /* Replication script cache. */
-    dict *repl_scriptcache_dict;        /* SHA1 all slaves are aware of. */
+    dict *repl_scriptcache_dict;        /* 已经传播出去的Lua脚本字典；key:Lua脚本SHA1校验和 */
     list *repl_scriptcache_fifo;        /* First in, first out LRU eviction. */
     unsigned int repl_scriptcache_size; /* Max number of elements. */
     /* Synchronous replication. */
@@ -901,10 +901,10 @@ struct redisServer {
     int cluster_require_full_coverage; /* If true, put the cluster down if
                                           there is at least an uncovered slot. */
     /* Scripting */
-    lua_State *lua; /* The Lua interpreter. We use just one for all clients */
-    redisClient *lua_client;   /* lua终端（伪终端） */
-    redisClient *lua_caller;   /* The client running EVAL right now, or NULL */
-    dict *lua_scripts;         /* A dictionary of SHA1 -> Lua scripts */
+    lua_State *lua;           /* Lua中断器 */
+    redisClient *lua_client;  /* lua终端（伪终端） */
+    redisClient *lua_caller;  /* The client running EVAL right now, or NULL */
+    dict *lua_scripts;        /* lua脚本字典；key:lua脚本的SHA1校验和，value:Lua脚本 */
     mstime_t lua_time_limit;  /* Script timeout in milliseconds */
     mstime_t lua_time_start;  /* lua脚本开始执行时间（ms） */
     int lua_write_dirty;  /* True if a write command was called during the
@@ -954,10 +954,10 @@ struct redisFunctionSym {
 };
 
 typedef struct _redisSortObject {
-    robj *obj;
+    robj *obj; // 被排序键的值
     union {
-        double score;
-        robj *cmpobj;
+        double score; // 排序数字值时使用
+        robj *cmpobj; // 排序带有BY选项的字符串值时使用
     } u;
 } redisSortObject;
 

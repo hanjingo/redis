@@ -56,7 +56,7 @@ robj *lookupKey(redisDb *db, robj *key) {
         return NULL;
     }
 }
-
+/** @brief 查找并返回key对应的值*/
 robj *lookupKeyRead(redisDb *db, robj *key) {
     robj *val;
 
@@ -73,7 +73,7 @@ robj *lookupKeyWrite(redisDb *db, robj *key) {
     expireIfNeeded(db,key);
     return lookupKey(db,key);
 }
-
+/** @brief 查找key对应的值并返回 @param key 键 @param reply 返回 */
 robj *lookupKeyReadOrReply(redisClient *c, robj *key, robj *reply) {
     robj *o = lookupKeyRead(c->db, key);
     if (!o) addReply(c,reply);
