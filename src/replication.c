@@ -2160,8 +2160,8 @@ void processClientsWaitingReplicas(void) {
     }
 }
 
-/* Return the slave replication offset for this instance, that is
- * the offset for which we already processed the master replication stream. */
+/**
+ * @brief 返回当前实例（必须为slave）的已复制偏移量 */
 long long replicationGetSlaveOffset(void) {
     long long offset = 0;
 

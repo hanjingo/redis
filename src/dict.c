@@ -564,14 +564,14 @@ dictIterator *dictGetIterator(dict *d)
     iter->nextEntry = NULL;
     return iter;
 }
-
+/** @brief  @param d 字典 */
 dictIterator *dictGetSafeIterator(dict *d) {
     dictIterator *i = dictGetIterator(d);
 
     i->safe = 1;
     return i;
 }
-
+/** @brief 遍历字典，返回下一个迭代器指向的元素； @param iter 迭代器 */
 dictEntry *dictNext(dictIterator *iter)
 {
     while (1) {

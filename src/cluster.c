@@ -554,9 +554,9 @@ clusterLink *createClusterLink(clusterNode *node) {
     return link;
 }
 
-/* Free a cluster link, but does not free the associated node of course.
- * This function will just make sure that the original node associated
- * with this link will have the 'link' field set to NULL. */
+/**
+ * @brief 释放集群中某个节点的链接
+ * @param link */
 void freeClusterLink(clusterLink *link) {
     if (link->fd != -1) {
         aeDeleteFileEvent(server.el, link->fd, AE_WRITABLE);
@@ -612,12 +612,12 @@ void clusterAcceptHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
  * Key space handling
  * -------------------------------------------------------------------------- */
 
-/* We have 16384 hash slots. The hash slot of a given key is obtained
- * as the least significant 14 bits of the crc16 of the key.
- *
- * However if the key contains the {...} pattern, only the part between
- * { and } is hashed. This may be useful in the future to force certain
- * keys to be in the same node (assuming no resharding is in progress). */
+/**
+ * @brief 将key进行hash化，并返回；
+ *          (算法规则：最少用14bit来做crc16运算，如果key包含匹配项，只hash化花括号{...}中间的值，不包括花括号{和})
+ * @param key 需要进行hash化的key
+ * @param keylen key的长度
+ **/
 unsigned int keyHashSlot(char *key, int keylen) {
     int s, e; /* start-end indexes of { and } */
 
@@ -688,15 +688,15 @@ clusterNode *createClusterNode(char *nodename, int flags) {
  *
  * The function returns 0 if it just updates a timestamp of an existing
  * failure report from the same sender. 1 is returned if a new failure
- * report is created. */
+ * report is created. */ /** @brief 添加下线报告 */
 int clusterNodeAddFailureReport(clusterNode *failing, clusterNode *sender) {
     list *l = failing->fail_reports;
     listNode *ln;
     listIter li;
     clusterNodeFailReport *fr;
 
-    /* If a failure report from the same sender already exists, just update
-     * the timestamp. */
+
+    /* 如果来自同一个发送者的下线报告已存在，更新它的时间戳 */
     listRewind(l,&li);
     while ((ln = listNext(&li)) != NULL) {
         fr = ln->value;
@@ -706,7 +706,7 @@ int clusterNodeAddFailureReport(clusterNode *failing, clusterNode *sender) {
         }
     }
 
-    /* Otherwise create a new report. */
+    /* 否则创建一份新的报告 */
     fr = zmalloc(sizeof(*fr));
     fr->node = sender;
     fr->time = mstime();
@@ -889,7 +889,7 @@ void clusterDelNode(clusterNode *delnode) {
     freeClusterNode(delnode);
 }
 
-/* Node lookup by name */
+/** @brief 根据节点名查找节点 */
 clusterNode *clusterLookupNode(char *name) {
     sds s = sdsnewlen(name, REDIS_CLUSTER_NAMELEN);
     dictEntry *de;
@@ -1148,7 +1148,7 @@ int clusterBlacklistExists(char *nodeid) {
  * 2) Or there is no majority so no slave promotion will be authorized and the
  *    FAIL flag will be cleared after some time.
  */
-void markNodeAsFailingIfNeeded(clusterNode *node) {
+void markNodeAsFailingIfNeeded(clusterNode *node) { /** @brief 如果有必要，为节点添加下线标记 */
     int failures;
     int needed_quorum = (server.cluster->size / 2) + 1;
 
@@ -1164,8 +1164,8 @@ void markNodeAsFailingIfNeeded(clusterNode *node) {
         "Marking node %.40s as failing (quorum reached).", node->name);
 
     /* Mark the node as failing. */
-    node->flags &= ~REDIS_NODE_PFAIL;
-    node->flags |= REDIS_NODE_FAIL;
+    node->flags &= ~REDIS_NODE_PFAIL; /* 疑似下线 */
+    node->flags |= REDIS_NODE_FAIL;   /* 已经下线 */
     node->fail_time = mstime();
 
     /* Broadcast the failing node name to everybody, forcing all the other
@@ -1286,12 +1286,12 @@ int clusterStartHandshake(char *ip, int port) {
     return 1;
 }
 
-/* Process the gossip section of PING or PONG packets.
- * Note that this function assumes that the packet is already sanity-checked
- * by the caller, not in the content of the gossip section, but in the
- * length. */
+/**
+ * @brief 处理Gossip消息
+ * @param hdr 集群消息
+ * @param link 集群中节点的链接 */
 void clusterProcessGossipSection(clusterMsg *hdr, clusterLink *link) {
-    uint16_t count = ntohs(hdr->count);
+    uint16_t count = ntohs(hdr->count); /* 转换大小端 */
     clusterMsgDataGossip *g = (clusterMsgDataGossip*) hdr->data.ping.gossip;
     clusterNode *sender = link->node ? link->node : clusterLookupNode(hdr->sender);
 
@@ -1300,7 +1300,7 @@ void clusterProcessGossipSection(clusterMsg *hdr, clusterLink *link) {
         clusterNode *node;
         sds ci;
 
-        ci = representRedisNodeFlags(sdsempty(), flags);
+        ci = representRedisNodeFlags(sdsempty(), flags); /* 拿到flag对应的字符串形式 */
         redisLog(REDIS_DEBUG,"GOSSIP %.40s %s:%d %s",
             g->nodename,
             g->ip,
@@ -1314,15 +1314,15 @@ void clusterProcessGossipSection(clusterMsg *hdr, clusterLink *link) {
             /* We already know this node.
                Handle failure reports, only when the sender is a master. */
             if (sender && nodeIsMaster(sender) && node != myself) {
-                if (flags & (REDIS_NODE_FAIL|REDIS_NODE_PFAIL)) {
-                    if (clusterNodeAddFailureReport(node,sender)) {
+                if (flags & (REDIS_NODE_FAIL|REDIS_NODE_PFAIL)) {   /* 确认已下线或疑似下线 *//
+                    if (clusterNodeAddFailureReport(node,sender)) { /* 添加下线报告 */
                         redisLog(REDIS_VERBOSE,
                             "Node %.40s reported node %.40s as not reachable.",
                             sender->name, node->name);
                     }
-                    markNodeAsFailingIfNeeded(node);
+                    markNodeAsFailingIfNeeded(node); /* 为节点添加下线标记 */
                 } else {
-                    if (clusterNodeDelFailureReport(node,sender)) {
+                    if (clusterNodeDelFailureReport(node,sender)) { /* 添加下线报告 */
                         redisLog(REDIS_VERBOSE,
                             "Node %.40s reported node %.40s is back online.",
                             sender->name, node->name);
@@ -1340,7 +1340,7 @@ void clusterProcessGossipSection(clusterMsg *hdr, clusterLink *link) {
                 !(flags & (REDIS_NODE_FAIL|REDIS_NODE_PFAIL)) &&
                 (strcasecmp(node->ip,g->ip) || node->port != ntohs(g->port)))
             {
-                if (node->link) freeClusterLink(node->link);
+                if (node->link) freeClusterLink(node->link); /* 释放该节点的链接 */
                 memcpy(node->ip,g->ip,REDIS_IP_STR_LEN);
                 node->port = ntohs(g->port);
                 node->flags &= ~REDIS_NODE_NOADDR;
@@ -1887,7 +1887,7 @@ int clusterProcessPacket(clusterLink *link) {
             failing = clusterLookupNode(hdr->data.fail.about.nodename);
             if (failing &&
                 !(failing->flags & (REDIS_NODE_FAIL|REDIS_NODE_MYSELF)))
-            {
+            {   /* 收到FAIL消息，标记相应节点 */
                 redisLog(REDIS_NOTICE,
                     "FAIL message received from %.40s about %.40s",
                     hdr->sender, hdr->data.fail.about.nodename);
@@ -2089,8 +2089,8 @@ void clusterSendMessage(clusterLink *link, unsigned char *msg, size_t msglen) {
     server.cluster->stats_bus_messages_sent++;
 }
 
-/* Send a message to all the nodes that are part of the cluster having
- * a connected link.
+/**
+ * @brief 
  *
  * It is guaranteed that this function will never have as a side effect
  * some node->link to be invalidated, so it is safe to call this function
@@ -2111,8 +2111,8 @@ void clusterBroadcastMessage(void *buf, size_t len) {
     dictReleaseIterator(di);
 }
 
-/* Build the message header. hdr must point to a buffer at least
- * sizeof(clusterMsg) in bytes. */
+/** @brief 构建消息头（消息头必须指向一个大小大于clusterMsg的缓冲区） 
+ * @param hdr 需要返回的消息头 @param type 集群消息类型 */
 void clusterBuildMessageHdr(clusterMsg *hdr, int type) {
     int totlen = 0;
     uint64_t offset;
@@ -2170,8 +2170,8 @@ void clusterBuildMessageHdr(clusterMsg *hdr, int type) {
     /* For PING, PONG, and MEET, fixing the totlen field is up to the caller. */
 }
 
-/* Send a PING or PONG packet to the specified node, making sure to add enough
- * gossip informations. */
+/**
+ * @brief 发送PING消息来做故障检测； @param link 集群链接 @param type  */
 void clusterSendPing(clusterLink *link, int type) {
     unsigned char *buf;
     clusterMsg *hdr;
@@ -2228,7 +2228,7 @@ void clusterSendPing(clusterLink *link, int type) {
     /* Populate the header. */
     if (link->node && type == CLUSTERMSG_TYPE_PING)
         link->node->ping_sent = mstime();
-    clusterBuildMessageHdr(hdr,type);
+    clusterBuildMessageHdr(hdr,type); /* 构建消息头 */
 
     /* Populate the gossip fields */
     int maxiterations = wanted*3;
@@ -2270,7 +2270,7 @@ void clusterSendPing(clusterLink *link, int type) {
         freshnodes--;
         gossip = &(hdr->data.ping.gossip[gossipcount]);
         memcpy(gossip->nodename,this->name,REDIS_CLUSTER_NAMELEN);
-        gossip->ping_sent = htonl(this->ping_sent);
+        gossip->ping_sent = htonl(this->ping_sent);                 /* 更新时间戳 */
         gossip->pong_received = htonl(this->pong_received);
         memcpy(gossip->ip,this->ip,sizeof(this->ip));
         gossip->port = htons(this->port);
@@ -3334,35 +3334,35 @@ void clusterDoBeforeSleep(int flags) {
  * Slots management
  * -------------------------------------------------------------------------- */
 
-/* Test bit 'pos' in a generic bitmap. Return 1 if the bit is set,
- * otherwise 0. */
+/** @brief 判断槽是新生成的还是旧的
+ * @param bitmap 槽表 @param pos 位置 */
 int bitmapTestBit(unsigned char *bitmap, int pos) {
     off_t byte = pos/8;
     int bit = pos&7;
     return (bitmap[byte] & (1<<bit)) != 0;
 }
 
-/* Set the bit at position 'pos' in a bitmap. */
+/** @brief 设置槽表的值 */
 void bitmapSetBit(unsigned char *bitmap, int pos) {
     off_t byte = pos/8;
     int bit = pos&7;
     bitmap[byte] |= 1<<bit;
 }
 
-/* Clear the bit at position 'pos' in a bitmap. */
+/** @brief 将槽位表置空 */
 void bitmapClearBit(unsigned char *bitmap, int pos) {
     off_t byte = pos/8;
     int bit = pos&7;
     bitmap[byte] &= ~(1<<bit);
 }
 
-/* Return non-zero if there is at least one master with slaves in the cluster.
- * Otherwise zero is returned. Used by clusterNodeSetSlotBit() to set the
- * MIGRATE_TO flag the when a master gets the first slot. */
+/** 
+ * @brief 判断master的slave数量是否为0
+ **/
 int clusterMastersHaveSlaves(void) {
     dictIterator *di = dictGetSafeIterator(server.cluster->nodes);
     dictEntry *de;
-    int slaves = 0;
+    int slaves = 0; /* 统计master的slave总数 */
     while((de = dictNext(di)) != NULL) {
         clusterNode *node = dictGetVal(de);
 
@@ -3373,10 +3373,10 @@ int clusterMastersHaveSlaves(void) {
     return slaves != 0;
 }
 
-/* Set the slot bit and return the old value. */
+/** @brief 设置节点槽位值; @param n 节点 @param slot 槽位索引 */
 int clusterNodeSetSlotBit(clusterNode *n, int slot) {
-    int old = bitmapTestBit(n->slots,slot);
-    bitmapSetBit(n->slots,slot);
+    int old = bitmapTestBit(n->slots,slot); /* 判断槽是否已存在 */
+    bitmapSetBit(n->slots,slot);            /* 设置槽位值 */
     if (!old) {
         n->numslots++;
         /* When a master gets its first slot, even if it has no slaves,
@@ -3398,7 +3398,7 @@ int clusterNodeSetSlotBit(clusterNode *n, int slot) {
     return old;
 }
 
-/* Clear the slot bit and return the old value. */
+/** @brief 清空槽位 */
 int clusterNodeClearSlotBit(clusterNode *n, int slot) {
     int old = bitmapTestBit(n->slots,slot);
     bitmapClearBit(n->slots,slot);
@@ -3411,25 +3411,25 @@ int clusterNodeGetSlotBit(clusterNode *n, int slot) {
     return bitmapTestBit(n->slots,slot);
 }
 
-/* Add the specified slot to the list of slots that node 'n' will
- * serve. Return REDIS_OK if the operation ended with success.
- * If the slot is already assigned to another instance this is considered
- * an error and REDIS_ERR is returned. */
+/**
+ * @brief 添加节点到槽位;
+ * @param n 节点
+ * @param slot 槽位id */
 int clusterAddSlot(clusterNode *n, int slot) {
     if (server.cluster->slots[slot]) return REDIS_ERR;
-    clusterNodeSetSlotBit(n,slot);
-    server.cluster->slots[slot] = n;
+    clusterNodeSetSlotBit(n,slot);   /* 设置节点槽位值 */
+    server.cluster->slots[slot] = n; /* 绑定节点到redis服务器的槽 */
     return REDIS_OK;
 }
 
-/* Delete the specified slot marking it as unassigned.
- * Returns REDIS_OK if the slot was assigned, otherwise if the slot was
- * already unassigned REDIS_ERR is returned. */
+/**
+ * @brief 从节点删除槽
+ **/
 int clusterDelSlot(int slot) {
     clusterNode *n = server.cluster->slots[slot];
 
     if (!n) return REDIS_ERR;
-    redisAssert(clusterNodeClearSlotBit(n,slot) == 1);
+    redisAssert(clusterNodeClearSlotBit(n,slot) == 1); /* 清空槽位 */
     server.cluster->slots[slot] = NULL;
     return REDIS_OK;
 }
@@ -3672,8 +3672,8 @@ static struct redisNodeFlags redisNodeFlagsTable[] = {
     {REDIS_NODE_NOADDR,    "noaddr,"}
 };
 
-/* Concatenate the comma separated list of node flags to the given SDS
- * string 'ci'. */
+/** @brief 返回标记对应的字符串形式
+ *  @param ci 传入的字符串, @param flags 标记 */
 sds representRedisNodeFlags(sds ci, uint16_t flags) {
     if (flags == 0) {
         ci = sdscat(ci,"noflags,");
@@ -3790,7 +3790,7 @@ sds clusterGenNodesDescription(int filter) {
 /* -----------------------------------------------------------------------------
  * CLUSTER command
  * -------------------------------------------------------------------------- */
-
+/* 从客户端读取槽id */
 int getSlotOrReply(redisClient *c, robj *o) {
     long long slot;
 
@@ -3923,20 +3923,20 @@ void clusterCommand(redisClient *c) {
         clusterDelNodeSlots(myself);
         clusterDoBeforeSleep(CLUSTER_TODO_UPDATE_STATE|CLUSTER_TODO_SAVE_CONFIG);
         addReply(c,shared.ok);
-    } else if ((!strcasecmp(c->argv[1]->ptr,"addslots") ||
-               !strcasecmp(c->argv[1]->ptr,"delslots")) && c->argc >= 3)
+    } else if ((!strcasecmp(c->argv[1]->ptr,"addslots") ||               /* 添加槽 */
+               !strcasecmp(c->argv[1]->ptr,"delslots")) && c->argc >= 3) /* 删除槽 */
     {
         /* CLUSTER ADDSLOTS <slot> [slot] ... */
         /* CLUSTER DELSLOTS <slot> [slot] ... */
         int j, slot;
-        unsigned char *slots = zmalloc(REDIS_CLUSTER_SLOTS);
+        unsigned char *slots = zmalloc(REDIS_CLUSTER_SLOTS); // 分配槽
         int del = !strcasecmp(c->argv[1]->ptr,"delslots");
 
         memset(slots,0,REDIS_CLUSTER_SLOTS);
-        /* Check that all the arguments are parseable and that all the
-         * slots are not already busy. */
+
+        /* 检查所有参数是否可解析且对应的槽都可用 */
         for (j = 2; j < c->argc; j++) {
-            if ((slot = getSlotOrReply(c,c->argv[j])) == -1) {
+            if ((slot = getSlotOrReply(c,c->argv[j])) == -1) { /* 读取槽ID */
                 zfree(slots);
                 return;
             }
@@ -3987,7 +3987,7 @@ void clusterCommand(redisClient *c) {
         }
 
         if ((slot = getSlotOrReply(c,c->argv[2])) == -1) return;
-
+        /* CLUSTER SETSLOT <i> MIGRATING <target_id> */ /* 将源节点的值设置为target_id所代表节点的clusterNode结构 */
         if (!strcasecmp(c->argv[3]->ptr,"migrating") && c->argc == 5) {
             if (server.cluster->slots[slot] != myself) {
                 addReplyErrorFormat(c,"I'm not the owner of hash slot %u",slot);
@@ -3999,7 +3999,7 @@ void clusterCommand(redisClient *c) {
                 return;
             }
             server.cluster->migrating_slots_to[slot] = n;
-        } else if (!strcasecmp(c->argv[3]->ptr,"importing") && c->argc == 5) {
+        } else if (!strcasecmp(c->argv[3]->ptr,"importing") && c->argc == 5) { /*CLUSTER SETSLOT <i> IMPORTING <source_id> */ /* 将目标节点的值设置为source_id所代表节点的clusterNode结构 */
             if (server.cluster->slots[slot] == myself) {
                 addReplyErrorFormat(c,
                     "I'm already the owner of hash slot %u",slot);
@@ -4138,7 +4138,7 @@ void clusterCommand(redisClient *c) {
             addReplyErrorFormat(c,"error saving the cluster node config: %s",
                 strerror(errno));
     } else if (!strcasecmp(c->argv[1]->ptr,"keyslot") && c->argc == 3) {
-        /* CLUSTER KEYSLOT <key> */
+        /* CLUSTER KEYSLOT <key> */ /* 计算key属于哪个槽 */
         sds key = c->argv[2]->ptr;
 
         addReplyLongLong(c,keyHashSlot(key,sdslen(key)));
@@ -4154,7 +4154,7 @@ void clusterCommand(redisClient *c) {
         }
         addReplyLongLong(c,countKeysInSlot(slot));
     } else if (!strcasecmp(c->argv[1]->ptr,"getkeysinslot") && c->argc == 4) {
-        /* CLUSTER GETKEYSINSLOT <slot> <count> */
+        /* CLUSTER GETKEYSINSLOT <slot> <count> */ /* 返回属于槽slot的数据库键 */
         long long maxkeys, slot;
         unsigned int numkeys, j;
         robj **keys;
@@ -4170,7 +4170,7 @@ void clusterCommand(redisClient *c) {
         }
 
         keys = zmalloc(sizeof(robj*)*maxkeys);
-        numkeys = getKeysInSlot(slot, keys, maxkeys);
+        numkeys = getKeysInSlot(slot, keys, maxkeys); /* 根据slot找keys */
         addReplyMultiBulkLen(c,numkeys);
         for (j = 0; j < numkeys; j++) addReplyBulk(c,keys[j]);
         zfree(keys);
@@ -5158,7 +5158,7 @@ void clusterRedirectClient(redisClient *c, clusterNode *n, int hashslot, int err
     {
         addReplySds(c,sdscatprintf(sdsempty(),
             "-%s %d %s:%d\r\n",
-            (error_code == REDIS_CLUSTER_REDIR_ASK) ? "ASK" : "MOVED",
+            (error_code == REDIS_CLUSTER_REDIR_ASK) ? "ASK" : "MOVED", /* 返回错误：MOVED <slot> <ip>:<port> 或 ASK <slot> <ip>:<port>*/
             hashslot,n->ip,n->port));
     } else {
         redisPanic("getNodeByQuery() unknown error.");

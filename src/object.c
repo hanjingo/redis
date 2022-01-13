@@ -642,7 +642,7 @@ int getLongLongFromObject(robj *o, long long *target) {
     if (target) *target = value;
     return REDIS_OK;
 }
-
+/** @brief 读取longlong类型的值; c:redis客户端（用来返回错误）, o:redis对象, target:返回的值, msg:出错时返回给客户端的内容 */
 int getLongLongFromObjectOrReply(redisClient *c, robj *o, long long *target, const char *msg) {
     long long value;
     if (getLongLongFromObject(o, &value) != REDIS_OK) {

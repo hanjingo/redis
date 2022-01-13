@@ -1178,7 +1178,7 @@ void slotToKeyFlush(void) {
     zslFree(server.cluster->slots_to_keys);
     server.cluster->slots_to_keys = zslCreate();
 }
-
+/** @brief 从redis服务器中查找指定hash值对应的key并返回实际找到的key的数量; @param hashslot hash值 @param count 要返回的最大数量 */
 unsigned int getKeysInSlot(unsigned int hashslot, robj **keys, unsigned int count) {
     zskiplistNode *n;
     zrangespec range;

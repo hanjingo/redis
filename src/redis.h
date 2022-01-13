@@ -327,19 +327,19 @@ typedef long long mstime_t; /* millisecond time type. */
 #define ZSKIPLIST_P 0.25      /* Skiplist P = 1/4 */
 
 /* Append only defines */
-#define AOF_FSYNC_NO 0                              /*将aof_buf中的所有内容写入到AOF文件，同步时间由操作系统决定*/
-#define AOF_FSYNC_ALWAYS 1                          /*将aof_buf缓冲区中所有内容写入并同步到AOF文件*/
-#define AOF_FSYNC_EVERYSEC 2                        /*每秒同步一次*/
-#define REDIS_DEFAULT_AOF_FSYNC AOF_FSYNC_EVERYSEC  /*默认同步策略*/
+#define AOF_FSYNC_NO 0                              /* 将aof_buf中的所有内容写入到AOF文件，同步时间由操作系统决定 */
+#define AOF_FSYNC_ALWAYS 1                          /* 将aof_buf缓冲区中所有内容写入并同步到AOF文件 */
+#define AOF_FSYNC_EVERYSEC 2                        /* 每秒同步一次 */
+#define REDIS_DEFAULT_AOF_FSYNC AOF_FSYNC_EVERYSEC  /* 默认同步策略 */
 
 /* Zip structure related defaults */
 #define REDIS_HASH_MAX_ZIPLIST_ENTRIES 512
 #define REDIS_HASH_MAX_ZIPLIST_VALUE 64
-#define REDIS_LIST_MAX_ZIPLIST_ENTRIES 512  // list保存的元素临界值，不超过就不用ziplist
-#define REDIS_LIST_MAX_ZIPLIST_VALUE 64     // 元素长度临界值，不超过就不用ziplist
-#define REDIS_SET_MAX_INTSET_ENTRIES 512    // 集合对象所有元素数量临界值，超过就不考虑intset 
-#define REDIS_ZSET_MAX_ZIPLIST_ENTRIES 128  // zset保存的元素数量临界值，超过就不考虑ziplist
-#define REDIS_ZSET_MAX_ZIPLIST_VALUE 64     // zset的元素长度临界值，超过就不考虑ziplist
+#define REDIS_LIST_MAX_ZIPLIST_ENTRIES 512  /* list保存的元素临界值，不超过就不用ziplist */
+#define REDIS_LIST_MAX_ZIPLIST_VALUE 64     /* 元素长度临界值，不超过就不用ziplist */
+#define REDIS_SET_MAX_INTSET_ENTRIES 512    /* 集合对象所有元素数量临界值，超过就不考虑intset */
+#define REDIS_ZSET_MAX_ZIPLIST_ENTRIES 128  /* zset保存的元素数量临界值，超过就不考虑ziplist */
+#define REDIS_ZSET_MAX_ZIPLIST_VALUE 64     /* zset的元素长度临界值，超过就不考虑ziplist */
 
 /* HyperLogLog defines */
 #define REDIS_DEFAULT_HLL_SPARSE_MAX_BYTES 3000
@@ -813,7 +813,7 @@ struct redisServer {
     int syslog_facility;            /* Syslog facility */
     /* Replication (master) */
     int slaveseldb;                 /* Last SELECTed DB in replication output */
-    long long master_repl_offset;   /* Global replication offset */
+    long long master_repl_offset;   /* 全局性的复制偏移量 */
     int repl_ping_slave_period;     /* Master pings the slave every N seconds */
     char *repl_backlog;             /* 复制积压缓冲区(环形) */
     long long repl_backlog_size;    /* 复制积压缓冲区容量 */
@@ -881,22 +881,22 @@ struct redisServer {
     size_t list_max_ziplist_entries;
     size_t list_max_ziplist_value;
     size_t set_max_intset_entries;
-    size_t zset_max_ziplist_entries;
+    size_t zset_max_ziplist_entries; /* ziplist的最大元素数量 */
     size_t zset_max_ziplist_value;
     size_t hll_sparse_max_bytes;
-    time_t unixtime;        /* 每次serverCron循环时的时间样本 */
-    long long mstime;       /* 每次serverCron循环时的时间样本(ms) */
+    time_t unixtime;                 /* 每次serverCron循环时的时间样本 */
+    long long mstime;                /* 每次serverCron循环时的时间样本(ms) */
     /* Pubsub */
     dict *pubsub_channels;      /* 订阅的客户端字典：key:频道，value:客户端列表 */
     list *pubsub_patterns;      /* 订阅关系列表 */
     int notify_keyspace_events; /* 数据库通知选项 */
  
     /* Cluster */
-    int cluster_enabled;      /* Is cluster enabled? */
-    mstime_t cluster_node_timeout; /* Cluster node timeout. */
-    char *cluster_configfile; /* Cluster auto-generated config file name. */
-    struct clusterState *cluster;  /* State of the cluster */
-    int cluster_migration_barrier; /* Cluster replicas migration barrier. */
+    int cluster_enabled;               /* Is cluster enabled? */
+    mstime_t cluster_node_timeout;     /* Cluster node timeout. */
+    char *cluster_configfile;          /* Cluster auto-generated config file name. */
+    struct clusterState *cluster;      /* 集群信息 */
+    int cluster_migration_barrier;     /* Cluster replicas migration barrier. */
     int cluster_slave_validity_factor; /* Slave max data age for failover. */
     int cluster_require_full_coverage; /* If true, put the cluster down if
                                           there is at least an uncovered slot. */
@@ -952,12 +952,12 @@ struct redisFunctionSym {
     char *name;
     unsigned long pointer;
 };
-
+/* 封装被排序的对象 */
 typedef struct _redisSortObject {
-    robj *obj; // 被排序键的值
+    robj *obj;        /* 被排序键的值 */
     union {
-        double score; // 排序数字值时使用
-        robj *cmpobj; // 排序带有BY选项的字符串值时使用
+        double score; /* 排序数字值时使用 */
+        robj *cmpobj; /* 排序带有BY选项的字符串值时使用 */
     } u;
 } redisSortObject;
 

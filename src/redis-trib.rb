@@ -453,7 +453,7 @@ class RedisTrib
         multi = slots.select {|k,v| v.length > 1}
 
         # Handle case "1": keys in no node.
-        if none.length > 0
+        if none.length > 0 # 没有key
             xputs "The folowing uncovered slots have no keys across the cluster:"
             xputs none.keys.join(",")
             yes_or_die "Fix these slots by covering with a random node?"
@@ -465,7 +465,7 @@ class RedisTrib
         end
 
         # Handle case "2": keys only in one node.
-        if single.length > 0
+        if single.length > 0 # 多个key
             xputs "The folowing uncovered slots have keys in just one node:"
             puts single.keys.join(",")
             yes_or_die "Fix these slots by covering with those nodes?"
@@ -476,7 +476,7 @@ class RedisTrib
         end
 
         # Handle case "3": keys in multiple nodes.
-        if multi.length > 0
+        if multi.length > 0 # 多个key
             xputs "The folowing uncovered slots have keys in multiple nodes:"
             xputs multi.keys.join(",")
             yes_or_die "Fix these slots by moving keys into a single node?"
@@ -927,15 +927,15 @@ class RedisTrib
         end
 
         if !o[:cold]
-            target.r.cluster("setslot",slot,"importing",source.info[:name])
-            source.r.cluster("setslot",slot,"migrating",target.info[:name])
+            target.r.cluster("setslot",slot,"importing",source.info[:name]) # 让目标节点准备好从源节点导入属于槽slot的键值对
+            source.r.cluster("setslot",slot,"migrating",target.info[:name]) # 让源节点准备好将属于槽slot的键值对迁移到目标节点
         end
         # Migrate all the keys from source to target using the MIGRATE command
         while true
-            keys = source.r.cluster("getkeysinslot",slot,o[:pipeline])
+            keys = source.r.cluster("getkeysinslot",slot,o[:pipeline]) # 获得属于槽slot的键值对的键名
             break if keys.length == 0
             begin
-                source.r.client.call(["migrate",target.info[:host],target.info[:port],"",0,@timeout,:keys,*keys])
+                source.r.client.call(["migrate",target.info[:host],target.info[:port],"",0,@timeout,:keys,*keys]) # 将被选中的键原子地从源节点迁移至目标节点
             rescue => e
                 if o[:fix] && e.to_s =~ /BUSYKEY/
                     xputs "*** Target key exists. Replacing it for FIX."
@@ -955,7 +955,7 @@ class RedisTrib
         if !o[:cold]
             @nodes.each{|n|
                 next if n.has_flag?("slave")
-                n.r.cluster("setslot",slot,"node",target.info[:name])
+                n.r.cluster("setslot",slot,"node",target.info[:name]) # 将槽slot指派给目标节点并广播到整个集群
             }
         end
 

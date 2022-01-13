@@ -43,56 +43,56 @@
 
 /* Unused arguments generate annoying warnings... */
 #define DICT_NOTUSED(V) ((void) V)
-
-typedef struct dictEntry {// 哈希表节点
-    void *key;              // 键
+/* 哈希表节点 */
+typedef struct dictEntry {
+    void *key;              /* 键 */
     union {                 
         void *val;
         uint64_t u64;
         int64_t s64;
         double d;
-    } v;                    // 值
-    struct dictEntry *next; // 指向下一个哈希表节点，形成链表
+    } v;                    /* 值 */
+    struct dictEntry *next; /* 指向下一个哈希表节点，形成链表 */
 } dictEntry;
-
-typedef struct dictType { // 操作键值对
-    unsigned int (*hashFunction)(const void *key);                          // 计算哈希值
-    void *(*keyDup)(void *privdata, const void *key);                       // 复制键
-    void *(*valDup)(void *privdata, const void *obj);                       // 复制值
-    int (*keyCompare)(void *privdata, const void *key1, const void *key2);  // 对比键
-    void (*keyDestructor)(void *privdata, void *key);                       // 销毁键
-    void (*valDestructor)(void *privdata, void *obj);                       // 销毁值
+/* 字典操作函数 */
+typedef struct dictType {
+    unsigned int (*hashFunction)(const void *key);                          /* 计算哈希值 */
+    void *(*keyDup)(void *privdata, const void *key);                       /* 复制键 */
+    void *(*valDup)(void *privdata, const void *obj);                       /* 复制值 */
+    int (*keyCompare)(void *privdata, const void *key1, const void *key2);  /* 对比键 */
+    void (*keyDestructor)(void *privdata, void *key);                       /* 销毁键 */
+    void (*valDestructor)(void *privdata, void *obj);                       /* 销毁值 */
 } dictType;
 
 
-
-typedef struct dictht {// hash表
-    dictEntry **table;      // hash表数组
-    unsigned long size;     // 哈希表大小
-    unsigned long sizemask; // 哈希表大小掩码，用于计算索引值，总是=size-1
-    unsigned long used;     // 已有节点的数量
+/* hash表 */
+typedef struct dictht {
+    dictEntry **table;      /* hash表数组 */
+    unsigned long size;     /* 哈希表大小 */
+    unsigned long sizemask; /* 哈希表大小掩码，用于计算索引值，总是=size-1 */
+    unsigned long used;     /* 已有节点的数量 */
 } dictht;
-
-typedef struct dict {// 字典 
-    dictType *type; // 类型特定函数
-    void *privdata; // 私有数据
-    dictht ht[2];   // 哈希表
-    long rehashidx; // 索引，当rehash不在进行时，值为-1
-    int iterators;  // 当前正在进行的迭代器数量
+/* 字典 */
+typedef struct dict {
+    dictType *type; /* 类型特定函数 */
+    void *privdata; /* 私有数据 */
+    dictht ht[2];   /* 哈希表 */
+    long rehashidx; /* 索引，当rehash不在进行时，值为-1 */
+    int iterators;  /* 当前正在进行的迭代器数量 */
 } dict;
 
-/* If safe is set to 1 this is a safe iterator, that means, you can call
- * dictAdd, dictFind, and other functions against the dictionary even while
- * iterating. Otherwise it is a non safe iterator, and only dictNext()
- * should be called while iterating. */
+/**
+ * 字典迭代器
+ *
+ */
 typedef struct dictIterator {
-    dict *d;
-    long index;
-    int table, safe;
-    dictEntry *entry, *nextEntry;
+    dict *d;                      /* 字典 */
+    long index;                   /* 索引 */
+    int table, safe;              /*  */
+    dictEntry *entry, *nextEntry; /* 指向下一个字典节点 */
     /* unsafe iterator fingerprint for misuse detection. */
-    long long fingerprint;
-} dictIterator;
+    long long fingerprint; 
+} dictIterator; 
 
 typedef void (dictScanFunction)(void *privdata, const dictEntry *de);
 
